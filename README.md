@@ -41,6 +41,24 @@ Build a child-friendly maze adventure with ten themed worlds, five levels per wo
 
 Ahana leads creative decisions. Engineering, testing, privacy, and publishing activities are carried out with adult guidance.
 
+## Run locally
+
+Requirements: Node.js 22.12 or newer and npm.
+
+```bash
+npm install
+npm run dev
+```
+
+Open the local URL printed by Vite. To run the production checks:
+
+```bash
+npm run typecheck
+npm run build
+```
+
+The current prototype includes one sample maze, selection among the three starting characters, keyboard movement (arrow keys or W/A/S/D), touch movement buttons, and restart. Profiles, save data, coin rewards, actual character unlock transactions, the ten worlds and the 50-level campaign remain planned milestones.
+
 ## Current status
 
 Planning and documentation baseline. The playable prototype and production implementation are not yet complete.
