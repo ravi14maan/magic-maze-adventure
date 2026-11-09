@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { CHARACTERS, type CharacterId } from "./data/characters";
+import { ART_READY_CHARACTER_IDS, CHARACTERS, type CharacterId } from "./data/characters";
 import {
   AVATAR_ACCESSORIES, AVATAR_BACKGROUNDS, AVATAR_EMOJIS, HAIRSTYLES, OUTFITS,
   activeProfile, addProfile, loadStore, saveStore, updateProfile,
@@ -182,75 +182,23 @@ function renderLevels(): void {
     </main>`;
 }
 
-function renderHeroPortrait(id: CharacterId, colour: number, token: string): string {
-  const body = "#" + colour.toString(16).padStart(6, "0");
-  const hair: Record<CharacterId, string> = {
-    "normal-girl": "#613347", "normal-boy": "#303046", unicorn: "#a75bd1",
-    witch: "#43265f", princess: "#8b3f34", prince: "#452d32",
-    "male-explorer": "#70492b", knight: "#6d7b89", mermaid: "#0e9eac"
-  };
-  const accent: Record<CharacterId, string> = {
-    "normal-girl": "#ffe16a", "normal-boy": "#5fd5ff", unicorn: "#8cf7ff",
-    witch: "#f8d95d", princess: "#ffd760", prince: "#ffd760",
-    "male-explorer": "#ffc65c", knight: "#d9f2ff", mermaid: "#ff8ccf"
-  };
-  const isBoy = ["normal-boy", "prince", "male-explorer", "knight"].includes(id);
-  const hairColour = hair[id];
-  const trim = accent[id];
-  let headpiece = "";
-  if (id === "princess" || id === "prince") {
-    headpiece = '<path d="M37 37 L42 18 L50 33 L60 13 L67 34 L76 19 L82 39 Z" fill="' + trim + '" stroke="#a66a22" stroke-width="2"/><circle cx="60" cy="25" r="3" fill="#fff"/>';
-  } else if (id === "witch") {
-    headpiece = '<path d="M29 37 L60 2 L91 37 Z" fill="#3d2467" stroke="#26163f" stroke-width="2"/><path d="M26 38 Q60 31 94 38 L90 45 Q60 39 30 45 Z" fill="#8f4bd3"/><circle cx="60" cy="37" r="5" fill="#ffe16a"/>';
-  } else if (id === "unicorn") {
-    headpiece = '<path d="M56 32 L61 0 L70 32 Z" fill="#ffd45b" stroke="#d18d38" stroke-width="2"/><path d="M63 8 L67 27" stroke="#ff8ecb" stroke-width="2"/>';
-  } else if (id === "knight") {
-    headpiece = '<path d="M29 34 Q60 4 91 34 L88 47 L32 47 Z" fill="#b9d9ec" stroke="#6985a1" stroke-width="2"/><path d="M60 19 L60 43" stroke="#fff" stroke-width="3"/>';
-  } else if (id === "male-explorer") {
-    headpiece = '<path d="M30 34 Q60 4 90 34 L95 39 L25 39 Z" fill="#d79a4f" stroke="#7c4d2a" stroke-width="2"/><path d="M44 31 Q60 18 76 31" fill="none" stroke="#ffe4a1" stroke-width="3"/>';
-  } else if (id === "mermaid") {
-    headpiece = '<path d="M38 31 Q60 8 82 31 L77 38 Q60 28 43 39 Z" fill="#ff8ccf"/><path d="M60 31 L60 20" stroke="#fff" stroke-width="2"/>';
-  }
-  const bottom = isBoy
-    ? '<path d="M43 103 L77 103 L85 132 L35 132 Z" fill="' + body + '"/>'
-    : '<path d="M43 103 Q60 109 77 103 L94 136 Q60 148 26 136 Z" fill="' + body + '" stroke="' + trim + '" stroke-width="3"/><path d="M31 132 Q60 145 89 132" stroke="' + trim + '" stroke-width="3" fill="none"/>';
-  const frontHair = isBoy
-    ? '<path d="M35 46 L28 28 L46 39 L57 22 L65 40 L81 26 L88 48 Z" fill="' + hairColour + '"/>'
-    : '<path d="M34 54 Q47 29 59 44 Q72 26 87 52 Q81 37 62 37 Q46 35 34 54 Z" fill="' + hairColour + '"/><path d="M34 58 Q24 79 31 100 Q42 99 42 73 M86 57 Q99 80 88 103 Q78 100 80 72" fill="' + hairColour + '"/>';
-  return '<svg class="hero-anime-portrait" viewBox="0 0 120 150" role="img" aria-label="' + id.replaceAll("-", " ") + ' character">' +
-    '<defs><linearGradient id="hero-' + id + '" x1="0" y1="0" x2="1" y2="1"><stop stop-color="' + body + '"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs>' +
-    '<ellipse cx="60" cy="139" rx="32" ry="7" fill="#18365b" opacity=".18"/>' +
-    '<path d="M42 111 L38 135 Q60 146 82 135 L78 111" fill="' + (isBoy ? "#31506f" : "#80518c") + '"/>' +
-    '<path d="M44 133 L34 143 Q44 148 54 143 L57 135 M77 133 L83 143 Q73 148 64 143 L62 135" fill="#554b79"/>' +
-    '<path d="M37 80 Q23 91 29 117 L43 125 L60 112 L77 125 L91 117 Q97 91 83 80 Z" fill="url(#hero-' + id + ')" stroke="' + body + '" stroke-width="2"/>' +
-    bottom +
-    '<path d="M27 59 Q25 19 61 17 Q95 18 93 59 L88 83 Q81 49 60 48 Q39 49 32 82 Z" fill="' + hairColour + '"/>' +
-    '<ellipse cx="60" cy="62" rx="29" ry="34" fill="#ffd2b4" stroke="#db9d84" stroke-width="2"/>' +
-    '<path d="M31 51 Q35 23 62 24 Q87 23 90 52 Q76 42 65 42 Q46 42 31 51 Z" fill="' + hairColour + '"/>' +
-    frontHair +
-    '<ellipse cx="49" cy="64" rx="5" ry="8" fill="#fff"/><ellipse cx="71" cy="64" rx="5" ry="8" fill="#fff"/>' +
-    '<ellipse cx="50" cy="65" rx="3" ry="6" fill="#493d72"/><ellipse cx="72" cy="65" rx="3" ry="6" fill="#493d72"/>' +
-    '<circle cx="51" cy="62" r="2" fill="#fff"/><circle cx="73" cy="62" r="2" fill="#fff"/>' +
-    '<ellipse cx="40" cy="77" rx="7" ry="3.5" fill="#f28da3" opacity=".62"/><ellipse cx="80" cy="77" rx="7" ry="3.5" fill="#f28da3" opacity=".62"/>' +
-    '<path d="M55 80 Q60 87 66 80" stroke="#9d5063" fill="none" stroke-width="2.5" stroke-linecap="round"/>' +
-    headpiece +
-    '<path d="M48 89 L60 98 L72 89" fill="none" stroke="' + trim + '" stroke-width="4"/>' +
-    '<path d="M43 88 L36 101 L48 98 M77 88 L84 101 L72 98" fill="' + body + '" stroke="' + trim + '" stroke-width="2"/>' +
-    '<text x="101" y="20" font-size="15">' + token + '</text></svg>';
+function renderHeroPortrait(id: CharacterId): string {
+  const readableName = id.replaceAll("-", " ");
+  return '<img class="hero-art-portrait" src="assets/characters/' + id + '.webp" alt="' + readableName + '" loading="lazy">';
 }
 
 function renderCharacters(): void {
   const p = currentProfileOrThrow();
   app!.innerHTML = `
     <main class="screen content-screen">
-      ${subHeader("Character Closet", "Three friends are ready. Six more are waiting to be unlocked.", "dashboard")}
+      ${subHeader("Character Closet", "These six heroes use the pictures you supplied. We can add more heroes later.", "dashboard")}
       <div class="character-grid-v2">
-        ${CHARACTERS.map(ch => {
+        ${CHARACTERS.filter(ch => ART_READY_CHARACTER_IDS.includes(ch.id)).map(ch => {
           const owned = p.unlockedCharacters.includes(ch.id);
           const selected = p.selectedCharacter === ch.id;
           return `
             <article class="hero-card ${owned ? "" : "locked"} ${selected ? "selected" : ""}">
-              <div class="hero-portrait" style="--hero-colour:#${ch.colour.toString(16).padStart(6,"0")}">${renderHeroPortrait(ch.id,ch.colour,ch.token)}${owned ? "" : "<i>🔒</i>"}</div>
+              <div class="hero-portrait" style="--hero-colour:#${ch.colour.toString(16).padStart(6,"0")}">${renderHeroPortrait(ch.id)}${owned ? "" : "<i>🔒</i>"}</div>
               <strong>${ch.name}</strong><small>${ch.description}</small>
               ${owned
                 ? `<button class="select-hero" data-action="select-character" data-id="${ch.id}">${selected ? "✓ Selected" : "Choose hero"}</button>`
@@ -330,7 +278,7 @@ function renderPlay(): void {
         <span id="hud-hearts">❤️❤️❤️❤️❤️</span>
         <span id="hud-gems">💎 0</span>
         <span id="hud-key">🚩 Challenge ahead</span>
-        <span class="hud-tip">Tap ▶ once to walk · tap ▲ to jump while moving · tap ▶ again to stop 🏁</span>
+        <span class="hud-tip">Tap ▶ once to walk · ▲ to jump · ▼ to duck · tap ▶ again to stop</span>
       </div>
       <div class="maze-stage" id="maze-host"></div>
       <div class="play-controls">
@@ -338,9 +286,9 @@ function renderPlay(): void {
           <span></span><button data-action="move" data-dir="up" aria-label="Move up">▲</button><span></span>
           <button data-action="move" data-dir="left" aria-label="Move left">◀</button>
           <button data-action="move" data-dir="down" aria-label="Move down">▼</button>
-          <button data-action="move" data-dir="right" aria-label="Move right">▶</button>
+          <button id="dpad-forward" data-action="move" data-dir="right" aria-label="Start or stop walking forward" aria-pressed="false">▶</button>
         </div>
-        <div class="control-help"><strong>Walk, jump and duck!</strong><small>Tap ▶ once to walk · ▲ to jump while walking</small></div>
+        <div class="control-help"><strong>Walk, jump and duck!</strong><small>Tap ▶ once to walk · ▲ jump · ▼ duck</small></div>
       </div>
     </main>`;
   const session: MazeSession = { characterId: p.selectedCharacter, worldIndex: currentWorldIndex, levelNumber: currentLevel, challenge, world, appearance: p.wardrobe ?? DEFAULT_WARDROBE };
@@ -395,6 +343,11 @@ function updateHud(data: MazeProgress): void {
   if (coins) coins.textContent = String(data.coins);
   if (gems) gems.textContent = `💎 ${data.gems}`;
   if (key) key.textContent = data.hasKey ? "✨ Challenge cleared" : "🚩 Challenge ahead";
+  const forward = document.querySelector<HTMLButtonElement>("#dpad-forward");
+  if (forward) {
+    forward.classList.toggle("auto-walking", data.walking);
+    forward.setAttribute("aria-pressed", String(data.walking));
+  }
   if (/collected|Treasure chest|found|activated|complete|portal reached/i.test(data.message)) gameAudio.play("collect");
   else if (/trap|monster|lost/i.test(data.message)) gameAudio.play("hurt");
   else if (/wall blocks|still hidden|locked/i.test(data.message)) gameAudio.play("click");
