@@ -31,9 +31,9 @@ app.innerHTML = `
         ${CHARACTERS.map((character) => {
           if (character.initiallyUnlocked) {
             return `
-              <button class="character-card is-selected" type="button"
+              <button class="character-card ${character.id === selectedCharacter ? "is-selected" : ""}" type="button"
                 data-character-id="${character.id}"
-                aria-pressed="false">
+                aria-pressed="${character.id === selectedCharacter}">
                 <span class="character-token" style="--character-colour:#${character.colour.toString(16).padStart(6, "0")}">${character.token}</span>
                 <span class="character-name">${character.name}</span>
                 <span class="character-state">Available</span>
