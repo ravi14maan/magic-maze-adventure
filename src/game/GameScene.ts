@@ -11,18 +11,19 @@ export interface MazeSession {
   world: WorldDefinition;
   appearance?: CharacterWardrobe;
 }
-export interface MazeProgress { hearts: number; coins: number; gems: number; hasKey: boolean; message: string }
+export interface MazeProgress { hearts: number; coins: number; gems: number; hasKey: boolean; walking: boolean; message: string }
 export interface MazeReward { coins: number; gems: number; stars: number; challenge: ChallengeType }
 
 type ObstacleKind = "log" | "rock" | "branch" | "monster";
-interface Obstacle { x: number; kind: ObstacleKind; sprite: Phaser.GameObjects.Text; handled: boolean }
+interface Obstacle { x: number; kind: ObstacleKind; sprite: Phaser.GameObjects.Text; handled: boolean; prompted: boolean; actionStarted: boolean }
 interface Pickup { x: number; y: number; kind: "coin" | "gem"; sprite: Phaser.GameObjects.Text; collected: boolean }
 interface Gap { left: number; right: number }
 
 const WORLD_LENGTH = 3100;
 const STATION_X = 1500;
 const FINISH_X = 2940;
-const GAP_ZONES: Gap[] = [{ left: 990, right: 1110 }, { left: 2180, right: 2310 }];
+const GAP_ZONES: Gap[] = [{ left: 990, right: 1080 }, { left: 2180, right: 2270 }];
+const SUPPLIED_HERO_IDS: CharacterId[] = ["normal-girl", "normal-boy", "unicorn", "witch", "princess", "mermaid"];
 
 export class GameScene extends Phaser.Scene {
   private readonly session: MazeSession;
@@ -49,6 +50,10 @@ export class GameScene extends Phaser.Scene {
   private overlayElement?: HTMLDivElement;
   private autoWalkEnabled = false;
   private walkCycle = 0;
+  private heroImage?: Phaser.GameObjects.Image;
+  private challengeTimer: number | null = null;
+  private readonly gapPrompted = [false, false];
+  private readonly gapActionStarted = [false, false];
   private obstacles: Obstacle[] = [];
   private pickups: Pickup[] = [];
   private swipeStartX = 0;
@@ -63,6 +68,12 @@ export class GameScene extends Phaser.Scene {
     this.onComplete = onComplete;
   }
 
+  preload(): void {
+    for (const id of SUPPLIED_HERO_IDS) {
+      this.load.image("hero-" + id, "assets/characters/" + id + ".webp");
+    }
+  }
+
   create(): void {
     const width = this.scale.width;
     const height = this.scale.height;
@@ -73,8 +84,9 @@ export class GameScene extends Phaser.Scene {
     this.drawWorld(width, height);
     this.drawHero();
     this.cameras.main.setBounds(0, 0, WORLD_LENGTH, height);
-    this.cameras.main.startFollow(this.player, true, 0.12, 0);
-    this.cameras.main.setFollowOffset(-width * 0.18, 0);
+    // A little camera lag lets players see the hero advance across the screen.
+    this.cameras.main.startFollow(this.player, true, 0.055, 0);
+    this.cameras.main.setFollowOffset(-width * 0.12, 0);
     this.input.keyboard?.on("keydown", this.handleKey, this);
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
       this.swipeStartX = pointer.x;
@@ -107,7 +119,7 @@ export class GameScene extends Phaser.Scene {
       this.facing = 1;
       this.player.setScale(1, this.player.scaleY);
     }
-    this.publish(this.autoWalkEnabled ? "▶️ Your character is walking! Tap ▲ to jump and tap ▶ again to stop." : "⏸️ Walking paused.");
+    this.publish(this.autoWalkEnabled ? "▶️ Walking forward! Tap ▲ to jump and ▼ to duck." : "⏸️ Walking paused.");
     return this.autoWalkEnabled;
   }
 
@@ -115,19 +127,37 @@ export class GameScene extends Phaser.Scene {
     if (this.complete || this.challengeOpen || !this.player) return;
     if (dy < 0) {
       const nearGround = this.player.y >= this.groundY - 8;
-      const forgivingGapJump = this.isOverGap(this.player.x) && this.time.now - this.lastGroundedAt < 220;
-      if (!this.jumping && (nearGround || forgivingGapJump)) {
+      const coyoteWindow = this.time.now - this.lastGroundedAt < 260;
+      if (!this.jumping && (nearGround || coyoteWindow)) {
         this.jumping = true;
-        this.jumpVelocity = -630;
-        this.publish("⬆️ Great jump! Clear the obstacle or gap.");
+        this.jumpVelocity = -690;
+        this.player.setAngle(-3);
+        const pendingObstacle = this.obstacles.find(o => o.prompted && !o.actionStarted && !o.handled);
+        if (pendingObstacle) {
+          pendingObstacle.actionStarted = true;
+          this.autoWalkEnabled = true;
+        }
+        const pendingGap = GAP_ZONES.findIndex((g, i) => this.gapPrompted[i] && !this.gapActionStarted[i]);
+        if (pendingGap >= 0) {
+          this.gapActionStarted[pendingGap] = true;
+          this.autoWalkEnabled = true;
+        }
+        this.publish("⬆️ Jump! Keep moving to clear the obstacle.");
       }
       return;
     }
     if (dy > 0) {
-      this.duckUntil = this.time.now + 620;
-      this.player.setScale(1, 0.65);
-      this.time.delayedCall(650, () => { if (this.player && this.time.now >= this.duckUntil) this.player.setScale(1, 1); });
-      this.publish("🙇 Duck! Stay low under the branch.");
+      this.duckUntil = this.time.now + 1550;
+      this.player.setScale(1, 0.72);
+      const pendingBranch = this.obstacles.find(o => o.kind === "branch" && o.prompted && !o.actionStarted && !o.handled);
+      if (pendingBranch) {
+        pendingBranch.actionStarted = true;
+        this.autoWalkEnabled = true;
+      }
+      this.time.delayedCall(1600, () => {
+        if (this.player && this.time.now >= this.duckUntil && !this.jumping) this.player.setScale(this.facing, 1);
+      });
+      this.publish("🙇 Duck! Keep moving under the branch.");
       return;
     }
     if (dx === 0) return;
@@ -161,13 +191,14 @@ export class GameScene extends Phaser.Scene {
     if (this.challengeOpen || this.complete) return;
     const inGap = this.isOverGap(this.player.x);
     if (this.jumping || inGap) {
-      this.jumpVelocity += 1420 * dt;
+      this.jumpVelocity += 840 * dt;
       this.player.y += this.jumpVelocity * dt;
       if (this.player.y >= this.groundY && !this.isOverGap(this.player.x)) {
         this.player.y = this.groundY;
         this.jumpVelocity = 0;
         this.jumping = false;
         this.player.setScale(this.facing, 1);
+        this.player.setAngle(0);
         this.publish("🌟 Safe landing!");
       } else if (this.player.y > this.scale.height + 105) {
         this.loseHeart("You fell into the gap. Try jumping a little earlier!");
@@ -194,6 +225,8 @@ export class GameScene extends Phaser.Scene {
       if (obstacle.handled) continue;
       if (this.player.x > obstacle.x + 45) {
         obstacle.handled = true;
+        obstacle.prompted = false;
+        obstacle.actionStarted = false;
         continue;
       }
       if (Math.abs(this.player.x - obstacle.x) < 29) {
@@ -217,15 +250,22 @@ export class GameScene extends Phaser.Scene {
 
     if (!inGap && this.player.y >= this.groundY - 2) this.lastGroundedAt = this.time.now;
     if (this.autoWalkEnabled && !this.jumping && !inGap && this.time.now > this.duckUntil) {
-      this.walkCycle += dt * 13;
+      this.walkCycle += dt * 10;
       this.leftLeg.angle = Math.sin(this.walkCycle) * 22;
       this.rightLeg.angle = Math.sin(this.walkCycle + Math.PI) * 22;
       this.leftArm.angle = Math.sin(this.walkCycle + Math.PI) * 17;
       this.rightArm.angle = Math.sin(this.walkCycle) * 17;
       this.player.y = this.groundY + Math.abs(Math.sin(this.walkCycle * 2)) * 2;
+      this.player.setAngle(Math.sin(this.walkCycle) * 1.8);
+      if (this.heroImage) {
+        this.heroImage.setAngle(Math.sin(this.walkCycle) * 1.5);
+        this.heroImage.setScale(this.heroImage.scaleX, 1 + Math.sin(this.walkCycle * 2) * 0.012);
+      }
     } else if (!this.autoWalkEnabled && !this.jumping && !inGap) {
       this.leftLeg.angle = 0; this.rightLeg.angle = 0;
       this.leftArm.angle = 0; this.rightArm.angle = 0;
+      this.player.setAngle(0);
+      if (this.heroImage) this.heroImage.setAngle(0);
     }
     if (this.player.x >= 820 && this.checkpointX < 820) {
       this.checkpointX = 820;
@@ -392,7 +432,7 @@ export class GameScene extends Phaser.Scene {
       }).setOrigin(0.5);
       if (kind === "rock") this.tweens.add({ targets: sprite, x: x + 22, duration: 520, yoyo: true, repeat: -1 });
       if (kind === "monster") this.tweens.add({ targets: sprite, y: y - 11, angle: 7, duration: 600, yoyo: true, repeat: -1 });
-      this.obstacles.push({ x, kind, sprite, handled: false });
+      this.obstacles.push({ x, kind, sprite, handled: false, prompted: false, actionStarted: false });
     }
 
     for (const x of [920, 2110]) {
@@ -431,6 +471,25 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawHero(): void {
+    const key = "hero-" + this.session.characterId;
+    if (this.textures.exists(key)) {
+      const shadow = this.add.ellipse(0, -2, 66, 15, 0x001b3c, 0.38);
+      const heroImage = this.add.image(0, 0, key).setOrigin(0.5, 1);
+      const scale = Math.min(154 / heroImage.width, 218 / heroImage.height);
+      heroImage.setScale(scale);
+      heroImage.setPosition(0, 0);
+      this.heroImage = heroImage;
+      // The submitted artwork is the playable character; subtle bob/lean animation
+      // gives the still illustration a readable running/walking motion.
+      this.leftLeg = this.add.graphics();
+      this.rightLeg = this.add.graphics();
+      this.leftArm = this.add.graphics();
+      this.rightArm = this.add.graphics();
+      const children: Phaser.GameObjects.GameObject[] = [shadow, heroImage];
+      this.player = this.add.container(120, this.groundY, children).setDepth(20);
+      return;
+    }
+
     const isBoy = this.session.characterId === "normal-boy" || this.session.characterId === "prince" ||
       this.session.characterId === "male-explorer" || this.session.characterId === "knight";
     const defaultOutfit = isBoy ? "🦺" : "👗";
@@ -630,15 +689,54 @@ export class GameScene extends Phaser.Scene {
 
   private advanceAutoWalk(dt: number): void {
     if (!this.autoWalkEnabled || !this.player || this.challengeOpen || this.complete) return;
-    const nextX = Math.min(FINISH_X + 30, this.player.x + 205 * dt);
+    const walkSpeed = 100; // deliberately slower so there is time to react
+    const nextX = Math.min(FINISH_X + 30, this.player.x + walkSpeed * dt);
+
+    // Stop before gaps and ask for one jump. The walk toggle is re-enabled by the jump tap.
+    for (let i = 0; i < GAP_ZONES.length; i++) {
+      const gap = GAP_ZONES[i]!;
+      if (this.gapPrompted[i] && !this.gapActionStarted[i]) {
+        this.autoWalkEnabled = false;
+        return;
+      }
+      if (!this.gapPrompted[i] && this.player.x < gap.left && nextX >= gap.left - 65) {
+        this.player.x = gap.left - 65;
+        this.gapPrompted[i] = true;
+        this.autoWalkEnabled = false;
+        this.publish("🌊 A gap is coming! Tap ▲ JUMP once. Walking will continue after your jump.");
+        return;
+      }
+    }
+
+    // Stop at each obstacle rather than letting the player collide repeatedly.
+    const nextObstacle = this.obstacles.find(o => !o.handled && o.x > this.player.x);
+    if (nextObstacle) {
+      if (nextObstacle.prompted && !nextObstacle.actionStarted) {
+        this.autoWalkEnabled = false;
+        return;
+      }
+      if (!nextObstacle.prompted && nextX >= nextObstacle.x - 92) {
+        this.player.x = nextObstacle.x - 92;
+        nextObstacle.prompted = true;
+        this.autoWalkEnabled = false;
+        const prompt = nextObstacle.kind === "branch"
+          ? "🌿 Low branch ahead! Tap ▼ DUCK once. Walking will continue underneath."
+          : "⚠️ Obstacle ahead! Tap ▲ JUMP once to clear it. Walking will continue automatically.";
+        this.publish(prompt);
+        return;
+      }
+    }
+
     if (!this.challengeCleared && nextX >= STATION_X - 70) {
       this.player.x = STATION_X - 70;
       this.autoWalkEnabled = false;
       this.openChallengeStation();
       return;
     }
+
     this.player.x = nextX;
-    this.player.setScale(this.facing, this.player.scaleY);
+    this.facing = 1;
+    this.player.setScale(1, this.player.scaleY);
   }
 
   private isOverGap(x: number): boolean {
@@ -654,8 +752,11 @@ export class GameScene extends Phaser.Scene {
     }
     this.tweens.killTweensOf(this.player);
     this.tweens.killTweensOf([this.leftLeg, this.rightLeg, this.leftArm, this.rightArm]);
-    this.player.setPosition(this.checkpointX, this.groundY);
+    // Respawn just behind the hazard instead of rewinding a long section.
+    this.player.setPosition(Math.max(this.checkpointX, this.player.x - 120), this.groundY);
     this.player.setScale(1, 1);
+    this.player.setAngle(0);
+    this.autoWalkEnabled = false;
     this.jumping = false;
     this.jumpVelocity = 0;
     this.duckUntil = 0;
@@ -905,6 +1006,7 @@ export class GameScene extends Phaser.Scene {
       coins: this.coins,
       gems: this.gems,
       hasKey: this.challengeCleared,
+      walking: this.autoWalkEnabled,
       message
     });
   }
