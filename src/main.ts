@@ -208,7 +208,7 @@ function renderCharacters(): void {
         <h3>Accessory</h3><div class="choice-row">${AVATAR_ACCESSORIES.map(e=>`<button type="button" class="choice-chip ${(p.wardrobe?.accessory ?? "✨")===e?"active":""}" data-action="wardrobe-accessory" data-value="${e}">${e}</button>`).join("")}</div>
         <p class="fine-print">Your outfit choices are saved separately for each player profile.</p>
       </section>
-      <div class="hint-card">🪙 Complete mazes and collect treasures to earn coins. Character unlocks belong to this profile.</div>
+      <div class="hint-card">🪙 Complete adventures and collect treasures to earn coins. Character unlocks belong to this profile.</div>
     </main>`;
 }
 
@@ -272,8 +272,8 @@ function renderPlay(): void {
       <div class="play-hud">
         <span id="hud-hearts">❤️❤️❤️❤️❤️</span>
         <span id="hud-gems">💎 0</span>
-        <span id="hud-key">${challenge === "key-door" || challenge === "tricky" ? "🗝️ Find key" : "🚪 Find portal"}</span>
-        <span class="hud-tip">Reach the swirling portal 🌀</span>
+        <span id="hud-key">🚩 Challenge ahead</span>
+        <span class="hud-tip">Walk the path · jump over hazards · reach the finish 🏁</span>
       </div>
       <div class="maze-stage" id="maze-host"></div>
       <div class="play-controls">
@@ -283,7 +283,7 @@ function renderPlay(): void {
           <button data-action="move" data-dir="down" aria-label="Move down">▼</button>
           <button data-action="move" data-dir="right" aria-label="Move right">▶</button>
         </div>
-        <div class="control-help"><strong>Explore every turn!</strong><small>Collect coins 🪙 · Avoid traps ⚡ · Find keys 🗝️</small></div>
+        <div class="control-help"><strong>Walk, jump and duck!</strong><small>Tap ▶ to walk · ▲ to jump · ▼ to duck</small></div>
       </div>
     </main>`;
   const session: MazeSession = { characterId: p.selectedCharacter, worldIndex: currentWorldIndex, levelNumber: currentLevel, challenge, world, appearance: p.wardrobe ?? DEFAULT_WARDROBE };
@@ -331,7 +331,7 @@ function updateHud(data: MazeProgress): void {
   if (hearts) hearts.textContent = "❤️".repeat(data.hearts) + "🖤".repeat(5-data.hearts);
   if (coins) coins.textContent = String(data.coins);
   if (gems) gems.textContent = `💎 ${data.gems}`;
-  if (key) key.textContent = data.hasKey ? "🗝️ Key found" : "🗝️ Find key";
+  if (key) key.textContent = data.hasKey ? "✨ Challenge cleared" : "🚩 Challenge ahead";
   if (/collected|Treasure chest|found|activated|complete|portal reached/i.test(data.message)) gameAudio.play("collect");
   else if (/trap|monster|lost/i.test(data.message)) gameAudio.play("hurt");
   else if (/wall blocks|still hidden|locked/i.test(data.message)) gameAudio.play("click");
@@ -359,9 +359,9 @@ function renderResult(): void {
   app!.innerHTML = `
     <main class="screen screen-center result-screen">
       <div class="result-confetti">🎉 ✨ 🌟</div>
-      <p class="eyebrow">MAZE COMPLETED</p>
+      <p class="eyebrow">ADVENTURE COMPLETED</p>
       <h1 class="brand-title">Amazing job!</h1>
-      <p class="lead">You found your way through the maze.</p>
+      <p class="lead">You completed your magical adventure!</p>
       <div class="result-stars">${"⭐".repeat(r.stars)}${"☆".repeat(3-r.stars)}</div>
       <div class="reward-row"><div><span>🪙</span><strong>+${r.coins}</strong><small>Coins</small></div><div><span>💎</span><strong>+${r.gems}</strong><small>Gems</small></div><div><span>🏆</span><strong>+${r.stars}</strong><small>Trophy stars</small></div></div>
       <p class="result-note">${currentLevel===5 ? "World chapter complete! A new world may now be open." : "A new level is waiting for you."}</p>
