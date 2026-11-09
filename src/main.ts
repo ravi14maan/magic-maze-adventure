@@ -286,7 +286,7 @@ function renderPlay(): void {
         <div class="control-help"><strong>Explore every turn!</strong><small>Collect coins 🪙 · Avoid traps ⚡ · Find keys 🗝️</small></div>
       </div>
     </main>`;
-  const session: MazeSession = { characterId: p.selectedCharacter, worldIndex: currentWorldIndex, levelNumber: currentLevel, challenge, world };
+  const session: MazeSession = { characterId: p.selectedCharacter, worldIndex: currentWorldIndex, levelNumber: currentLevel, challenge, world, appearance: p.wardrobe ?? DEFAULT_WARDROBE };
   // Keep a direct reference to the exact scene instance. Phaser's SceneManager
   // lookup can be unavailable while the first frame is booting; the controls
   // must not depend on that lookup returning a scene immediately.
