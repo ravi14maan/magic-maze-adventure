@@ -242,7 +242,7 @@ function renderPlay(): void {
       <div class="play-hud">
         <span id="hud-hearts">❤️❤️❤️❤️❤️</span>
         <span id="hud-gems">💎 0</span>
-        <span id="hud-key">🗝️ Find key</span>
+        <span id="hud-key">${challenge === "key-door" || challenge === "tricky" ? "🗝️ Find key" : "🚪 Find portal"}</span>
         <span class="hud-tip">Reach the swirling portal 🌀</span>
       </div>
       <div class="maze-stage" id="maze-host"></div>
