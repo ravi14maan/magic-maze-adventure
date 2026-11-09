@@ -404,7 +404,7 @@ export class GameScene extends Phaser.Scene {
         fontSize: (underwater ? 17 + (i % 4) * 5 : 20 + (i % 3) * 7) + "px"
       }).setOrigin(0.5).setAlpha(underwater ? 0.28 : 0.22)
         .setScrollFactor(0.16 + (i % 3) * 0.08)
-        .setDepth(-3 + (i % 2));
+        .setDepth(0);
       this.tweens.add({
         targets: particle,
         y: y - 12 - (i % 4) * 5,
@@ -423,7 +423,7 @@ export class GameScene extends Phaser.Scene {
       const y = 24 + (i * 71) % Math.max(100, height * 0.68);
       const glint = this.add.circle(x, y, 2 + (i % 3), 0xe5ffff, 0.24)
         .setScrollFactor(0.46)
-        .setDepth(-1);
+        .setDepth(0);
       this.tweens.add({
         targets: glint,
         alpha: 0.75,
