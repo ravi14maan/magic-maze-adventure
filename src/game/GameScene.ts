@@ -862,7 +862,7 @@ export class GameScene extends Phaser.Scene {
 
   private startMemoryChallenge(): void {
     const progressIndex = this.session.worldIndex * 5 + this.session.levelNumber - 1;
-    const pairCount = Math.min(8, 5 + Math.floor(progressIndex / 10));
+    const pairCount = Math.min(8, 6 + Math.floor(progressIndex / 10));
     const themes: string[][] = [
       ["🐬", "🐠", "🐙", "🦀", "🐢", "🦑", "🪼", "🐳"],
       ["🍬", "🍭", "🍩", "🧁", "🍓", "🍦", "🍪", "🍉"],
@@ -970,25 +970,30 @@ export class GameScene extends Phaser.Scene {
   }
 
   private startPatternChallenge(): void {
-    const panel = this.createPanel("Crystal Pattern", "Study the full sequence, then choose what belongs in the final space.", "💎");
-    const sequence = ["💎", "⭐", "🐚", "💎", "⭐", "?"];
-    this.addChallengeText(panel, "The pattern repeats in groups of three. Which symbol comes next?");
+    const patterns = [
+      { series: ["💎", "⭐", "🐚", "💎", "⭐", "?"], answer: "🐚", choices: ["🐚", "💎", "🦀", "🌙"] },
+      { series: ["🔵", "🔴", "🟡", "🔵", "🔴", "?"], answer: "🟡", choices: ["🟡", "🔵", "🟢", "⭐"] },
+      { series: ["🐚", "🐠", "🦀", "🐚", "🐠", "?"], answer: "🦀", choices: ["🦀", "🐢", "🐬", "🐚"] },
+      { series: ["🌙", "⭐", "☀️", "🌙", "⭐", "?"], answer: "☀️", choices: ["☀️", "🌙", "⭐", "💎"] }
+    ];
+    const puzzle = patterns[(this.session.worldIndex + this.session.levelNumber) % patterns.length]!;
+    const panel = this.createPanel("Crystal Pattern", "Study the sequence and find the missing symbol.", "💎");
+    this.addChallengeText(panel, "Look for the repeating group. Which symbol comes next?");
     const pattern = document.createElement("div");
     pattern.className = "pattern-display";
-    pattern.textContent = sequence.join("   ");
+    pattern.textContent = puzzle.series.join("   ");
     this.challengeContent(panel).append(pattern);
-    const options = [["🐚", true], ["💎", false], ["🌙", false], ["🦀", false]] as const;
     const choices = document.createElement("div");
     choices.className = "challenge-choice-row";
     this.challengeContent(panel).append(choices);
-    for (const [symbol, correct] of options) {
+    for (const symbol of puzzle.choices) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "challenge-choice";
       button.textContent = symbol;
       button.addEventListener("click", () => {
-        if (correct) this.showChallengeWon();
-        else this.showRetryHint(panel, "Look at the first three symbols. The same order repeats!");
+        if (symbol === puzzle.answer) this.showChallengeWon();
+        else this.showRetryHint(panel, "Not quite. Check the repeating group at the start of the sequence.");
       });
       choices.append(button);
     }
@@ -1032,6 +1037,12 @@ export class GameScene extends Phaser.Scene {
     code.textContent = target.join("  →  ");
     this.challengeContent(panel).append(code);
     let step = 0;
+    window.setTimeout(() => {
+      if (this.overlayElement?.isConnected) {
+        code.textContent = "❔  →  ❔  →  ❔  →  ❔";
+        this.addChallengeText(panel, "Now enter the four runes from memory.");
+      }
+    }, 2400);
     const status = this.addChallengeText(panel, "Code progress: 0 / 4", "challenge-status");
     const choices = document.createElement("div");
     choices.className = "challenge-choice-row";
