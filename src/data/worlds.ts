@@ -12,16 +12,16 @@ export interface WorldDefinition {
 }
 
 export const WORLDS: readonly WorldDefinition[] = [
-  { id: "underwater", name: "Underwater", icon: "🫧", description: "Explore a colourful underwater trail", sky: "#dff7ff", floor: 0xe4faff, wall: 0x277b99, accent: 0x42bfd0 },
-  { id: "candy-kingdom", name: "Candy Kingdom", icon: "🍭", description: "Bounce through a playful candy adventure", sky: "#fff0fa", floor: 0xffe6f4, wall: 0xb34c8d, accent: 0xf28aba },
-  { id: "enchanted-forest", name: "Enchanted Forest", icon: "🌳", description: "Discover glowing paths and forest friends", sky: "#e9ffe9", floor: 0xe5f4d8, wall: 0x407a47, accent: 0x8bcf79 },
-  { id: "scary-cave", name: "Scary Cave", icon: "🦇", description: "Explore a friendly cave full of surprises", sky: "#eee7ff", floor: 0xe9e1f6, wall: 0x55466f, accent: 0x9d83c4 },
-  { id: "frozen-kingdom", name: "Frozen Kingdom", icon: "❄️", description: "Slide across a sparkling frozen kingdom", sky: "#e9f6ff", floor: 0xe4f2ff, wall: 0x477ba8, accent: 0x8bcef4 },
-  { id: "space", name: "Space", icon: "🚀", description: "Leap between colourful planets and stars", sky: "#171d46", floor: 0x30345f, wall: 0x11152f, accent: 0xb7a5ff },
-  { id: "magic-castle", name: "Magic Castle", icon: "🏰", description: "Explore royal halls and hidden stairways", sky: "#fff0dc", floor: 0xffe8ca, wall: 0x95613f, accent: 0xe8ae62 },
-  { id: "ghost-world", name: "Ghost World", icon: "👻", description: "Meet friendly ghosts and floating platforms", sky: "#e8eaff", floor: 0xe8e8f8, wall: 0x5c608e, accent: 0xa6a7e7 },
-  { id: "fairy-world", name: "Fairy World", icon: "🧚", description: "Follow fairy lights through a flower garden", sky: "#fff0f6", floor: 0xfde4f3, wall: 0xa65d9a, accent: 0xf0a2d2 },
-  { id: "crystal-cave", name: "Crystal Cave", icon: "💎", description: "Explore glittering tunnels and crystal bridges", sky: "#e8f9ff", floor: 0xdff3fa, wall: 0x3f718a, accent: 0x70d3dc }
+  { id: "underwater", name: "Underwater", icon: "🫧", description: "Explore a colourful underwater trail", sky: "#087fb3", floor: 0x286675, wall: 0x06466e, accent: 0xff6caa },
+  { id: "candy-kingdom", name: "Candy Kingdom", icon: "🍭", description: "Bounce through a playful candy adventure", sky: "#ff65c7", floor: 0xffcc57, wall: 0xaa286d, accent: 0xffeb3b },
+  { id: "enchanted-forest", name: "Enchanted Forest", icon: "🌳", description: "Discover glowing paths and forest friends", sky: "#72e84c", floor: 0x8ad64a, wall: 0x246d38, accent: 0xffdb39 },
+  { id: "scary-cave", name: "Scary Cave", icon: "🦇", description: "Explore a friendly cave full of surprises", sky: "#5542a8", floor: 0x4b456c, wall: 0x211d46, accent: 0xff6b6b },
+  { id: "frozen-kingdom", name: "Frozen Kingdom", icon: "❄️", description: "Slide across a sparkling frozen kingdom", sky: "#4ec5ff", floor: 0x9be9ff, wall: 0x176d9f, accent: 0xffffff },
+  { id: "space", name: "Space", icon: "🚀", description: "Leap between colourful planets and stars", sky: "#15135b", floor: 0x373b88, wall: 0x090b37, accent: 0x45e6ff },
+  { id: "magic-castle", name: "Magic Castle", icon: "🏰", description: "Explore royal halls and hidden stairways", sky: "#ffb83f", floor: 0xffd45a, wall: 0x8b421c, accent: 0xfff05a },
+  { id: "ghost-world", name: "Ghost World", icon: "👻", description: "Meet friendly ghosts and floating platforms", sky: "#4a4ea8", floor: 0x6b6aa5, wall: 0x24255f, accent: 0xc1c3ff },
+  { id: "fairy-world", name: "Fairy World", icon: "🧚", description: "Follow fairy lights through a flower garden", sky: "#ff68b1", floor: 0xffc6e7, wall: 0x962f80, accent: 0xfff06a },
+  { id: "crystal-cave", name: "Crystal Cave", icon: "💎", description: "Explore glittering tunnels and crystal bridges", sky: "#22bbed", floor: 0x8deaff, wall: 0x075c90, accent: 0x6afff4 }
 ] as const;
 
 export const CHALLENGES: readonly ChallengeType[] = ["classic", "monster", "obstacle", "key-door", "tricky"];
