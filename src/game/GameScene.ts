@@ -115,6 +115,12 @@ export class GameScene extends Phaser.Scene {
 
   toggleAutoWalk(): boolean {
     if (this.complete || this.challengeOpen || !this.player) return false;
+    const waitingForJump = this.gapPrompted.some((shown, i) => shown && !this.gapActionStarted[i]) ||
+      this.obstacles.some(o => o.prompted && !o.actionStarted && !o.handled);
+    if (!this.autoWalkEnabled && waitingForJump) {
+      this.publish("⚠️ Use the suggested action first: jump over the obstacle or duck under the branch.");
+      return false;
+    }
     this.autoWalkEnabled = !this.autoWalkEnabled;
     if (this.autoWalkEnabled) {
       this.facing = 1;
@@ -746,6 +752,16 @@ export class GameScene extends Phaser.Scene {
 
   private loseHeart(message: string): void {
     this.autoWalkEnabled = false;
+    const hitObstacle = this.obstacles.find(o => Math.abs(o.x - this.player.x) < 55 && !o.handled);
+    if (hitObstacle) {
+      hitObstacle.prompted = false;
+      hitObstacle.actionStarted = false;
+    }
+    const fallenGap = GAP_ZONES.findIndex(g => this.player.x > g.left - 20 && this.player.x < g.right + 20);
+    if (fallenGap >= 0) {
+      this.gapPrompted[fallenGap] = false;
+      this.gapActionStarted[fallenGap] = false;
+    }
     this.hearts--;
     if (this.hearts <= 0) {
       this.hearts = 5;
