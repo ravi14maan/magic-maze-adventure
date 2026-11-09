@@ -13,268 +13,482 @@ export interface MazeSession {
 }
 export interface MazeProgress { hearts: number; coins: number; gems: number; hasKey: boolean; message: string }
 export interface MazeReward { coins: number; gems: number; stars: number; challenge: ChallengeType }
-type TileItem = "coin" | "gem" | "key" | "door" | "trap" | "monster" | "chest" | "switch" | "hidden";
 
-const COLS = 15, ROWS = 23;
-const START = { x: 1, y: 1 };
-const EXIT = { x: COLS - 2, y: ROWS - 2 };
-const keyOf = (x: number, y: number): string => `${x},${y}`;
+type ObstacleKind = "log" | "rock" | "branch" | "monster";
+interface Obstacle { x: number; kind: ObstacleKind; sprite: Phaser.GameObjects.Text; handled: boolean }
+interface Pickup { x: number; y: number; kind: "coin" | "gem"; sprite: Phaser.GameObjects.Text; collected: boolean }
+interface Gap { left: number; right: number }
 
-function rng(seed: number): () => number {
-  let state = (seed >>> 0) || 1;
-  return () => { state = (state * 1664525 + 1013904223) >>> 0; return state / 4294967296; };
-}
-
-function generateMaze(seed: number): number[][] {
-  const random = rng(seed);
-  const grid = Array.from({ length: ROWS }, () => Array<number>(COLS).fill(1));
-  const stack = [START];
-  grid[1]![1] = 0;
-  const dirs = [[0, -2], [2, 0], [0, 2], [-2, 0]] as const;
-  while (stack.length) {
-    const p = stack[stack.length - 1]!;
-    const options = dirs.map(([dx, dy]) => ({ x: p.x + dx, y: p.y + dy, dx, dy }))
-      .filter(n => n.x > 0 && n.x < COLS - 1 && n.y > 0 && n.y < ROWS - 1 && grid[n.y]![n.x] === 1);
-    if (!options.length) { stack.pop(); continue; }
-    const n = options[Math.floor(random() * options.length)]!;
-    grid[p.y + n.dy / 2]![p.x + n.dx / 2] = 0;
-    grid[n.y]![n.x] = 0;
-    stack.push({ x: n.x, y: n.y });
-  }
-  return grid;
-}
-
-function shortestPath(grid: number[][]): Array<{x:number;y:number}> {
-  const queue = [START];
-  const prev = new Map<string, string | null>([[keyOf(1,1), null]]);
-  const dirs = [[0,-1],[1,0],[0,1],[-1,0]] as const;
-  for (let i = 0; i < queue.length; i++) {
-    const p = queue[i]!;
-    if (p.x === EXIT.x && p.y === EXIT.y) break;
-    for (const [dx,dy] of dirs) {
-      const x=p.x+dx,y=p.y+dy,k=keyOf(x,y);
-      if (grid[y]?.[x] !== 0 || prev.has(k)) continue;
-      prev.set(k,keyOf(p.x,p.y)); queue.push({x,y});
-    }
-  }
-  const path:Array<{x:number;y:number}>=[];
-  let cursor:string|null=keyOf(EXIT.x,EXIT.y);
-  while(cursor) {
-    const [x,y]=cursor.split(",").map(Number);
-    path.push({x,y}); cursor=prev.get(cursor) ?? null;
-  }
-  return path.reverse();
-}
+const WORLD_LENGTH = 3100;
+const STATION_X = 1500;
+const FINISH_X = 2940;
+const GAP_ZONES: Gap[] = [{ left: 990, right: 1110 }, { left: 2180, right: 2310 }];
 
 export class GameScene extends Phaser.Scene {
   private readonly session: MazeSession;
   private readonly onProgress: (p: MazeProgress) => void;
   private readonly onComplete: (r: MazeReward) => void;
-  private grid:number[][]=[];
-  private specials=new Map<string,TileItem>();
-  private specialSprites=new Map<string,Phaser.GameObjects.Text>();
-  private player!:Phaser.GameObjects.Container;
-  private px=1; private py=1; private tile=20; private left=0; private top=0;
-  private hearts=5; private coins=0; private gems=0; private hasKey=false;
-  private invulnerableUntil=0; private complete=false; private hiddenOpen=false;
-  private swipeStartX=0; private swipeStartY=0; private swipePointerId=-1;
-  private ready=false;
-  private pendingMoves:Array<[number,number]> = [];
+  private player!: Phaser.GameObjects.Container;
+  private legs!: Phaser.GameObjects.Graphics;
+  private groundY = 0;
+  private jumpVelocity = 0;
+  private jumping = false;
+  private duckUntil = 0;
+  private facing = 1;
+  private hearts = 5;
+  private coins = 0;
+  private gems = 0;
+  private checkpointX = 120;
+  private challengeOpen = false;
+  private challengeCleared = false;
+  private complete = false;
+  private overlay?: Phaser.GameObjects.Container;
+  private obstacles: Obstacle[] = [];
+  private pickups: Pickup[] = [];
+  private swipeStartX = 0;
+  private swipeStartY = 0;
+  private swipePointerId = -1;
+  private lastMessage = "";
 
-  constructor(session:MazeSession,onProgress:(p:MazeProgress)=>void,onComplete:(r:MazeReward)=>void) {
-    super("MazeScene"); this.session=session; this.onProgress=onProgress; this.onComplete=onComplete;
+  constructor(session: MazeSession, onProgress: (p: MazeProgress) => void, onComplete: (r: MazeReward) => void) {
+    super("MazeScene");
+    this.session = session;
+    this.onProgress = onProgress;
+    this.onComplete = onComplete;
   }
 
-  create():void {
+  create(): void {
+    const width = this.scale.width;
+    const height = this.scale.height;
+    this.groundY = Math.floor(height * 0.77);
     this.cameras.main.setBackgroundColor(this.session.world.sky);
-    this.buildLevel(); this.drawBoard();
-    this.ready=true;
-    const queuedMoves=this.pendingMoves.splice(0);
-    queuedMoves.forEach(([dx,dy])=>this.move(dx,dy));
-    this.input.keyboard?.on("keydown",this.handleKey,this);
-    this.input.on("pointerdown",(pointer:Phaser.Input.Pointer)=>{
-      this.swipeStartX=pointer.x;
-      this.swipeStartY=pointer.y;
-      this.swipePointerId=pointer.id;
+    this.drawWorld(width, height);
+    this.drawHero();
+    this.cameras.main.setBounds(0, 0, WORLD_LENGTH, height);
+    this.cameras.main.startFollow(this.player, true, 0.12, 0);
+    this.cameras.main.setFollowOffset(-width * 0.18, 0);
+    this.input.keyboard?.on("keydown", this.handleKey, this);
+    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      this.swipeStartX = pointer.x;
+      this.swipeStartY = pointer.y;
+      this.swipePointerId = pointer.id;
     });
-    this.input.on("pointerup",(pointer:Phaser.Input.Pointer)=>{
-      if(pointer.id!==this.swipePointerId)return;
-      const dx=pointer.x-this.swipeStartX;
-      const dy=pointer.y-this.swipeStartY;
-      this.swipePointerId=-1;
-      if(Math.max(Math.abs(dx),Math.abs(dy))<28)return;
-      if(Math.abs(dx)>Math.abs(dy))this.move(dx>0?1:-1,0);
-      else this.move(0,dy>0?1:-1);
+    this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => {
+      if (pointer.id !== this.swipePointerId) return;
+      const dx = pointer.x - this.swipeStartX;
+      const dy = pointer.y - this.swipeStartY;
+      this.swipePointerId = -1;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < 35) return;
+      if (Math.abs(dx) > Math.abs(dy)) this.move(dx > 0 ? 1 : -1, 0);
+      else this.move(0, dy < 0 ? -1 : 1);
     });
-    this.scale.on(Phaser.Scale.Events.RESIZE,this.drawBoard,this);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN,()=>{
-      this.input.keyboard?.off("keydown",this.handleKey,this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input.keyboard?.off("keydown", this.handleKey, this);
       this.input.off("pointerdown");
       this.input.off("pointerup");
-      this.scale.off(Phaser.Scale.Events.RESIZE,this.drawBoard,this);
     });
-    this.publish("Find the key, dodge the hazards and reach the portal!");
+    this.publish("Your adventure begins! Tap ▶ to walk, ▲ to jump and ▼ to duck.");
   }
 
-  move(dx:number,dy:number):void {
-    if(this.complete)return;
-    if(!this.ready){this.pendingMoves.push([dx,dy]);return;}
-    if(!this.player)return;
-    let x=this.px+dx,y=this.py+dy;
-    const targetCell=this.grid[y]?.[x];
-    if(targetCell!==0 && !(targetCell===2 && this.hiddenOpen)){
-      this.publish(targetCell===2?"🔮 The secret path is still hidden. Find its switch!":"🧱 A wall blocks this way. Try another turn.");
+  move(dx: number, dy: number): void {
+    if (this.complete || this.challengeOpen || !this.player) return;
+    if (dy < 0) {
+      if (!this.jumping && this.player.y >= this.groundY - 2) {
+        this.jumping = true;
+        this.jumpVelocity = -565;
+        this.publish("⬆️ Great jump! Clear the obstacle or gap.");
+      }
       return;
     }
-    const key=keyOf(x,y),item=this.specials.get(key);
-    let message="Keep exploring!";
-    let redraw=false;
-    if(item==="door"&&!this.hasKey){this.publish("🔒 Find the golden key to open this door!");return;}
-    if(item==="key"){this.hasKey=true;this.removeItem(key);message="🗝️ Golden key found! The magic door will open.";}
-    else if(item==="coin"){this.coins++;this.removeItem(key);message="🪙 Coin collected!";}
-    else if(item==="gem"){this.gems++;this.removeItem(key);message="💎 Sparkling gem collected!";}
-    else if(item==="chest"){this.coins+=8;this.gems++;this.removeItem(key);message="🎁 Treasure chest! +8 coins and +1 gem!";}
-    else if(item==="switch"){this.hiddenOpen=true;this.removeItem(key);message="✨ Switch activated! A secret passage has appeared.";redraw=true;}
-    else if(item==="hidden"){this.removeItem(key);message="🌟 You discovered a hidden shortcut!";}
-    else if((item==="trap"||item==="monster")&&Date.now()>this.invulnerableUntil){
-      this.hearts--;this.invulnerableUntil=Date.now()+950;this.removeItem(key);
-      message=item==="trap"?"⚡ Magic trap! One heart lost.":"👾 Monster bump! One heart lost.";
-      if(this.hearts<=0){this.hearts=5;x=START.x;y=START.y;message="🧚 A fairy brought you safely back to the start. Keep going!";}
+    if (dy > 0) {
+      this.duckUntil = this.time.now + 620;
+      this.player.setScale(1, 0.65);
+      this.time.delayedCall(650, () => { if (this.player && this.time.now >= this.duckUntil) this.player.setScale(1, 1); });
+      this.publish("🙇 Duck! Stay low under the branch.");
+      return;
     }
-    this.px=x;this.py=y;
-    if(redraw)this.drawBoard();
-    else {
+    if (dx === 0) return;
+    this.facing = dx > 0 ? 1 : -1;
+    const oldX = this.player.x;
+    let targetX = Phaser.Math.Clamp(oldX + dx * 78, 85, FINISH_X + 30);
+    if (!this.challengeCleared && dx > 0 && targetX >= STATION_X - 70) {
+      targetX = STATION_X - 70;
       this.tweens.killTweensOf(this.player);
-      this.tweens.add({
-        targets:this.player,
-        x:this.cellX(x),
-        y:this.cellY(y),
-        duration:105,
-        ease:"Sine.easeOut"
-      });
-    }
-    if(x===EXIT.x&&y===EXIT.y){
-      if((this.session.challenge==="key-door"||this.session.challenge==="tricky")&&!this.hasKey){this.publish("The portal needs the golden key. Search the maze!");return;}
-      this.complete=true;
-      const stars=this.hearts>=4?3:this.hearts>=2?2:1;
-      this.publish("🌟 Level complete! Portal reached!");
-      this.onComplete({coins:25+this.coins*3+stars*5,gems:this.gems,stars,challenge:this.session.challenge});
+      this.player.x = targetX;
+      this.openChallengeStation();
       return;
     }
+    this.tweens.killTweensOf(this.player);
+    this.tweens.add({ targets: this.player, x: targetX, duration: 145, ease: "Sine.easeOut" });
+    this.player.setScale(this.facing, this.player.scaleY);
+    if (!this.jumping && this.time.now > this.duckUntil) {
+      this.tweens.add({ targets: this.legs, angle: { from: -18, to: 18 }, duration: 80, yoyo: true, repeat: 2 });
+      this.tweens.add({ targets: this.player, y: this.groundY - 4, duration: 75, yoyo: true, repeat: 1 });
+    }
+    if (dx > 0 && oldX < 760 && targetX >= 760) {
+      this.checkpointX = 760;
+      this.publish("🏕️ Checkpoint reached! You will restart here if you stumble.");
+    }
+  }
+
+  update(_time: number, delta: number): void {
+    if (!this.player || this.complete || this.challengeOpen) return;
+    const dt = Math.min(delta, 40) / 1000;
+    const inGap = this.isOverGap(this.player.x);
+    if (this.jumping || inGap) {
+      this.jumpVelocity += 1420 * dt;
+      this.player.y += this.jumpVelocity * dt;
+      if (this.player.y >= this.groundY && !this.isOverGap(this.player.x)) {
+        this.player.y = this.groundY;
+        this.jumpVelocity = 0;
+        this.jumping = false;
+        this.player.setScale(this.facing, 1);
+        this.publish("🌟 Safe landing!");
+      } else if (this.player.y > this.scale.height + 105) {
+        this.loseHeart("You fell into the gap. Try jumping a little earlier!");
+        return;
+      }
+    }
+
+    for (const pickup of this.pickups) {
+      if (pickup.collected) continue;
+      if (Math.abs(this.player.x - pickup.x) < 34 && Math.abs(this.player.y - pickup.y) < 58) {
+        pickup.collected = true;
+        pickup.sprite.destroy();
+        if (pickup.kind === "coin") {
+          this.coins++;
+          this.publish("🪙 Coin collected! Keep looking for treasures.");
+        } else {
+          this.gems++;
+          this.publish("💎 Sparkling gem collected!");
+        }
+      }
+    }
+
+    for (const obstacle of this.obstacles) {
+      if (obstacle.handled) continue;
+      if (this.player.x > obstacle.x + 45) {
+        obstacle.handled = true;
+        continue;
+      }
+      if (Math.abs(this.player.x - obstacle.x) < 29) {
+        const airborne = this.player.y < this.groundY - 58;
+        const ducking = this.time.now < this.duckUntil;
+        const safe = obstacle.kind === "branch" ? ducking : airborne;
+        if (!safe) {
+          obstacle.handled = true;
+          const text: Record<ObstacleKind, string> = {
+            log: "🪵 Jump over the fallen log next time!",
+            rock: "🪨 Time your jump to clear the rolling rock!",
+            branch: "🌿 Duck under the low branch!",
+            monster: "👾 Jump over the friendly monster!"
+          };
+          this.loseHeart(text[obstacle.kind]);
+          return;
+        }
+      }
+    }
+
+    if (this.player.x >= 760 && this.checkpointX < 760) this.checkpointX = 760;
+    if (this.player.x >= FINISH_X) this.finishAdventure();
+  }
+
+  private drawWorld(width: number, height: number): void {
+    const sky = this.session.world.sky;
+    const floor = this.session.world.floor;
+    const accent = this.session.world.accent;
+    this.add.rectangle(WORLD_LENGTH / 2, height / 2, WORLD_LENGTH, height, sky);
+    for (let i = 0; i < 13; i++) {
+      const x = 100 + i * 255;
+      this.add.ellipse(x, this.groundY - 54 - (i % 3) * 15, 340, 150, accent, 0.16);
+      this.add.text(x - 70, 54 + (i % 2) * 43, "☁️", { fontFamily: "system-ui", fontSize: "36px" });
+      const scenery = this.session.worldIndex === 0 ? ["🪸", "🐚", "🐠"] :
+        this.session.worldIndex === 1 ? ["🍭", "🍬", "🍩"] :
+        this.session.worldIndex === 4 ? ["🌲", "⛄", "❄️"] :
+        this.session.worldIndex === 5 ? ["🪐", "⭐", "🚀"] : ["🌳", "🌼", "🍄"];
+      this.add.text(x + 30, this.groundY - 92 - (i % 2) * 22, scenery[i % scenery.length]!, { fontFamily: "system-ui", fontSize: "42px" });
+    }
+
+    const groundSegments: Array<[number, number]> = [[0, 990], [1110, 2180], [2310, WORLD_LENGTH]];
+    for (const [start, end] of groundSegments) {
+      this.add.rectangle((start + end) / 2, this.groundY + 95, end - start, 190, floor);
+      this.add.rectangle((start + end) / 2, this.groundY + 5, end - start, 14, accent);
+    }
+    for (const gap of GAP_ZONES) {
+      this.add.rectangle((gap.left + gap.right) / 2, this.groundY + 24, gap.right - gap.left, 48, 0x35435a, 0.9);
+      this.add.text((gap.left + gap.right) / 2, this.groundY + 45, "⬇️", { fontFamily: "system-ui", fontSize: "22px" }).setOrigin(0.5);
+    }
+
+    const obstacleDefs: Array<[number, ObstacleKind]> = [
+      [430, "log"], [735, "rock"], [1265, "branch"], [1845, "monster"], [2020, "rock"], [2510, "log"]
+    ];
+    for (const [x, kind] of obstacleDefs) {
+      const icon: Record<ObstacleKind, string> = { log: "🪵", rock: "🪨", branch: "🌿", monster: "👾" };
+      const y = kind === "branch" ? this.groundY - 150 : this.groundY - 27;
+      const sprite = this.add.text(x, y, icon[kind], { fontFamily: "system-ui", fontSize: kind === "branch" ? "49px" : "42px" }).setOrigin(0.5);
+      if (kind === "rock") this.tweens.add({ targets: sprite, y: y - 12, duration: 420, yoyo: true, repeat: -1 });
+      if (kind === "monster") this.tweens.add({ targets: sprite, y: y - 8, duration: 600, yoyo: true, repeat: -1 });
+      this.obstacles.push({ x, kind, sprite, handled: false });
+    }
+
+    const pickupDefs: Array<[number, number, "coin" | "gem"]> = [
+      [245, this.groundY - 85, "coin"], [345, this.groundY - 125, "coin"], [610, this.groundY - 95, "gem"],
+      [865, this.groundY - 90, "coin"], [1165, this.groundY - 105, "coin"], [1370, this.groundY - 90, "gem"],
+      [1740, this.groundY - 115, "coin"], [1940, this.groundY - 92, "gem"], [2390, this.groundY - 105, "coin"],
+      [2700, this.groundY - 92, "coin"]
+    ];
+    for (const [x, y, kind] of pickupDefs) {
+      const sprite = this.add.text(x, y, kind === "coin" ? "🪙" : "💎", { fontFamily: "system-ui", fontSize: "28px" }).setOrigin(0.5);
+      this.tweens.add({ targets: sprite, y: y - 9, angle: 12, duration: 650, yoyo: true, repeat: -1 });
+      this.pickups.push({ x, y, kind, sprite, collected: false });
+    }
+
+    this.add.text(STATION_X, this.groundY - 125, "✨ CHALLENGE ✨", {
+      fontFamily: "system-ui", fontSize: "18px", fontStyle: "bold", color: "#ffffff",
+      backgroundColor: "#76539b", padding: { x: 10, y: 7 }
+    }).setOrigin(0.5);
+    this.add.text(STATION_X, this.groundY - 45, "🎪", { fontFamily: "system-ui", fontSize: "58px" }).setOrigin(0.5);
+    this.add.text(FINISH_X, this.groundY - 72, "🏁 🏆", { fontFamily: "system-ui", fontSize: "52px" }).setOrigin(0.5);
+    this.add.text(width * 0.5, 8, this.session.world.name + "  •  LEVEL " + this.session.levelNumber, {
+      fontFamily: "system-ui", fontSize: "12px", fontStyle: "bold", color: "#ffffff",
+      backgroundColor: "#00000044", padding: { x: 9, y: 5 }
+    }).setOrigin(0.5, 0).setScrollFactor(0);
+  }
+
+  private drawHero(): void {
+    const character = getCharacter(this.session.characterId);
+    const appearance = this.session.appearance ?? { hairstyle: "🌸", outfit: "👗", accessory: "✨" };
+    const colour = character.colour;
+    const shadow = this.add.ellipse(0, -2, 48, 13, 0x3d3651, 0.18);
+    const body = this.add.graphics();
+    body.fillStyle(colour, 1);
+    body.fillRoundedRect(-14, -48, 28, 34, 9);
+    body.fillStyle(0xf4c7a5, 1);
+    body.fillCircle(0, -62, 13);
+    body.fillStyle(0x47364d, 1);
+    body.fillCircle(-4, -64, 1.8);
+    body.fillCircle(4, -64, 1.8);
+    body.lineStyle(1.5, 0x9c526b, 1);
+    body.beginPath(); body.arc(0, -59, 4, 0.15, Math.PI - 0.15, false); body.strokePath();
+    body.fillStyle(colour, 1);
+    body.fillEllipse(-19, -38, 12, 22);
+    body.fillEllipse(19, -38, 12, 22);
+    const legs = this.add.graphics();
+    legs.lineStyle(6, 0x59435f, 1, 1, true);
+    legs.beginPath(); legs.moveTo(-7, -16); legs.lineTo(-10, 0); legs.strokePath();
+    legs.beginPath(); legs.moveTo(7, -16); legs.lineTo(10, 0); legs.strokePath();
+    legs.fillStyle(0x70517d, 1);
+    legs.fillRoundedRect(-18, -4, 14, 6, 3);
+    legs.fillRoundedRect(4, -4, 14, 6, 3);
+    this.legs = legs;
+    const token = this.add.text(0, -88, character.token, { fontFamily: "system-ui", fontSize: "31px" }).setOrigin(0.5);
+    const hair = this.add.text(-14, -82, appearance.hairstyle, { fontFamily: "system-ui", fontSize: "15px" }).setOrigin(0.5);
+    const accessory = this.add.text(15, -76, appearance.accessory, { fontFamily: "system-ui", fontSize: "16px" }).setOrigin(0.5);
+    const outfit = this.add.text(0, -34, appearance.outfit, { fontFamily: "system-ui", fontSize: "17px" }).setOrigin(0.5);
+    this.player = this.add.container(120, this.groundY, [shadow, legs, body, token, hair, accessory, outfit]).setDepth(20);
+  }
+
+  private isOverGap(x: number): boolean {
+    return GAP_ZONES.some(g => x > g.left && x < g.right);
+  }
+
+  private loseHeart(message: string): void {
+    this.hearts--;
+    if (this.hearts <= 0) {
+      this.hearts = 5;
+      message = "🧚 A fairy helped you at the checkpoint. Try the obstacle again!";
+    }
+    this.tweens.killTweensOf(this.player);
+    this.player.setPosition(this.checkpointX, this.groundY);
+    this.player.setScale(1, 1);
+    this.jumping = false;
+    this.jumpVelocity = 0;
+    this.duckUntil = 0;
     this.publish(message);
   }
 
-  private buildLevel():void {
-    const seed=(this.session.worldIndex+1)*7919+this.session.levelNumber*104729;
-    this.grid=generateMaze(seed);this.specials.clear();
-    const path=shortestPath(this.grid),random=rng(seed^0x5f3759df);
-    const reserved=new Set([keyOf(START.x,START.y),keyOf(EXIT.x,EXIT.y)]);
-    const put=(x:number,y:number,t:TileItem):void=>{
-      const k=keyOf(x,y);if(reserved.has(k)||this.specials.has(k))return;
-      this.specials.set(k,t);reserved.add(k);
-    };
-    if(this.session.challenge==="key-door"||this.session.challenge==="tricky"){
-      const k=path[Math.floor(path.length*.29)]!,d=path[Math.floor(path.length*.72)]!;
-      put(k.x,k.y,"key");put(d.x,d.y,"door");
-    }
-    if(this.session.challenge==="tricky"){
-      const switchStart=Math.floor(path.length*.48);
-      for(let offset=0;offset<path.length/3;offset++){
-        const candidate=path[Math.min(path.length-2,switchStart+offset)]!;
-        if(!reserved.has(keyOf(candidate.x,candidate.y))){put(candidate.x,candidate.y,"switch");break;}
-      }
-      const hiddenCandidates:Array<{x:number;y:number}>=[];
-      for(let y=1;y<ROWS-1;y++)for(let x=1;x<COLS-1;x++){
-        if(this.grid[y]![x]!==1)continue;
-        const horizontal=this.grid[y]![x-1]===0&&this.grid[y]![x+1]===0;
-        const vertical=this.grid[y-1]![x]===0&&this.grid[y+1]![x]===0;
-        if(horizontal||vertical)hiddenCandidates.push({x,y});
-      }
-      if(hiddenCandidates.length){
-        const hidden=hiddenCandidates[Math.floor(random()*hiddenCandidates.length)]!;
-        this.grid[hidden.y]![hidden.x]=2;
-        this.specials.set(keyOf(hidden.x,hidden.y),"hidden");
-        reserved.add(keyOf(hidden.x,hidden.y));
-      }
-    }
-    for(let i=10;i<path.length-6;i+=9){const p=path[i]!;put(p.x,p.y,"coin");}
-    const cells:Array<{x:number;y:number}>=[];
-    for(let y=1;y<ROWS-1;y++)for(let x=1;x<COLS-1;x++)if(this.grid[y]![x]===0&&!reserved.has(keyOf(x,y)))cells.push({x,y});
-    for(let i=cells.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[cells[i],cells[j]]=[cells[j]!,cells[i]!];}
-    let coins=0,gems=0,traps=0,monsters=0,chests=0;
-    const trapLimit=this.session.challenge==="obstacle"||this.session.challenge==="tricky"?14:8;
-    const monsterLimit=this.session.challenge==="monster"?10:5;
-    for(const p of cells){
-      const r=random();
-      if(coins<14&&r<.24){put(p.x,p.y,"coin");coins++;}
-      else if(gems<5&&r<.34){put(p.x,p.y,"gem");gems++;}
-      else if(traps<trapLimit&&r<.53){put(p.x,p.y,"trap");traps++;}
-      else if(monsters<monsterLimit&&r<.66){put(p.x,p.y,"monster");monsters++;}
-      else if(chests<2&&r>.95){put(p.x,p.y,"chest");chests++;}
-      if(coins>=14&&gems>=5&&traps>=trapLimit&&monsters>=monsterLimit&&chests>=2)break;
-    }
-    const routeHazards=this.session.challenge==="obstacle"||this.session.challenge==="tricky"?5:3;
-    for(let i=17,n=0;i<path.length-9&&n<routeHazards;i+=16){
-      const p=path[i]!;const k=keyOf(p.x,p.y);
-      if(!reserved.has(k)){put(p.x,p.y,"trap");n++;}
-    }
+  private openChallengeStation(): void {
+    this.challengeOpen = true;
+    this.publish("✨ Challenge station reached! Your journey is paused.");
+    const panel = this.createPanel("Magical Challenge Station", "Your adventure is paused right here. Complete a mini-game to open the path.");
+    this.addPanelButton(panel, "START CHALLENGE", () => this.startChallenge());
   }
 
-  private drawBoard():void {
-    this.tweens.killAll();
-    this.children.removeAll(true);this.specialSprites.clear();
-    const w=this.scale.width,h=this.scale.height;
-    this.tile=Math.max(11,Math.min(36,(w-12)/COLS,(h-12)/ROWS));
-    this.left=(w-COLS*this.tile)/2;this.top=(h-ROWS*this.tile)/2;
-    for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
-      const cx=this.cellX(x),cy=this.cellY(y);
-      if(this.grid[y]?.[x]!==0 && !(this.grid[y]?.[x]===2 && this.hiddenOpen)){
-        this.add.rectangle(cx,cy,this.tile-1,this.tile-1,this.session.world.wall).setStrokeStyle(1,this.session.world.accent,.65);
-        this.add.circle(cx,cy,Math.max(1,this.tile*.055),this.session.world.accent,.3);
-      }else{
-        this.add.rectangle(cx,cy,this.tile-1,this.tile-1,this.session.world.floor).setStrokeStyle(1,this.session.world.accent,.28);
-      }
-    }
-    const icons:Record<TileItem,string>={coin:"🪙",gem:"💎",key:"🗝️",door:"🚪",trap:"⚡",monster:"👾",chest:"🎁",switch:"🔘",hidden:"🌟"};
-    for(const [key,item] of this.specials){
-      if(item==="hidden"&&!this.hiddenOpen)continue;
-      const [x,y]=key.split(",").map(Number);
-      const sprite=this.add.text(this.cellX(x!),this.cellY(y!),icons[item],{fontFamily:"system-ui",fontSize:`${Math.max(11,this.tile*.72)}px`}).setOrigin(.5);
-      this.specialSprites.set(key,sprite);
-      if(item==="monster")this.tweens.add({targets:sprite,y:sprite.y-2,duration:500,yoyo:true,repeat:-1});
-      if(item==="coin"||item==="gem")this.tweens.add({targets:sprite,angle:12,duration:750,yoyo:true,repeat:-1});
-      if(item==="trap")this.tweens.add({targets:sprite,alpha:.48,scale:.84,duration:430,yoyo:true,repeat:-1});
-    }
-    const portal=this.add.text(this.cellX(EXIT.x),this.cellY(EXIT.y),"🌀",{fontFamily:"system-ui",fontSize:`${Math.max(13,this.tile*.88)}px`}).setOrigin(.5);
-    this.tweens.add({targets:portal,scale:1.15,duration:700,yoyo:true,repeat:-1});
-    const character=getCharacter(this.session.characterId);
-    const appearance=this.session.appearance ?? {hairstyle:"🌸",outfit:"👗",accessory:"✨"};
-    this.player=this.add.container(this.cellX(this.px),this.cellY(this.py)).setDepth(10);
-    this.player.add([
-      this.add.circle(0,0,this.tile*.43,character.colour).setStrokeStyle(1.5,0xffffff),
-      this.add.text(0,-this.tile*.02,character.token,{fontFamily:"system-ui",fontSize:`${Math.max(14,this.tile*.77)}px`}).setOrigin(.5),
-      this.add.text(-this.tile*.28,-this.tile*.38,appearance.hairstyle,{fontFamily:"system-ui",fontSize:`${Math.max(7,this.tile*.34)}px`}).setOrigin(.5),
-      this.add.text(this.tile*.30,-this.tile*.37,appearance.accessory,{fontFamily:"system-ui",fontSize:`${Math.max(7,this.tile*.34)}px`}).setOrigin(.5),
-      this.add.text(0,this.tile*.38,appearance.outfit,{fontFamily:"system-ui",fontSize:`${Math.max(7,this.tile*.38)}px`}).setOrigin(.5)
-    ]);
-    const ink=this.session.world.id==="space"?"#ffffff":"#59446c";
-    this.add.text(w/2,6,`${this.session.world.icon} ${this.session.world.name}  •  LEVEL ${this.session.levelNumber}`,{fontFamily:"system-ui",fontSize:"12px",fontStyle:"bold",color:ink,backgroundColor:"#00000033",padding:{x:8,y:4}}).setOrigin(.5,0);
+  private createPanel(title: string, subtitle: string): Phaser.GameObjects.Container {
+    this.overlay?.destroy(true);
+    const width = this.scale.width;
+    const height = this.scale.height;
+    const panelWidth = Math.min(width - 28, 370);
+    const panelHeight = Math.min(height - 34, 430);
+    const container = this.add.container(0, 0).setScrollFactor(0).setDepth(1000);
+    container.add(this.add.rectangle(width / 2, height / 2, width, height, 0x302440, 0.72));
+    container.add(this.add.rectangle(width / 2, height / 2, panelWidth, panelHeight, 0xfffbff).setStrokeStyle(3, 0xe5c9f0));
+    container.add(this.add.text(width / 2, height / 2 - panelHeight / 2 + 28, title, {
+      fontFamily: "system-ui", fontSize: width < 380 ? "18px" : "21px", fontStyle: "bold", color: "#674c83",
+      align: "center", wordWrap: { width: panelWidth - 28 }
+    }).setOrigin(0.5));
+    container.add(this.add.text(width / 2, height / 2 - panelHeight / 2 + 78, subtitle, {
+      fontFamily: "system-ui", fontSize: "12px", color: "#806d8a", align: "center",
+      wordWrap: { width: panelWidth - 34 }
+    }).setOrigin(0.5));
+    this.overlay = container;
+    return container;
   }
 
-  private removeItem(key:string):void {
-    this.specials.delete(key);const sprite=this.specialSprites.get(key);
-    if(sprite){this.tweens.killTweensOf(sprite);sprite.destroy();this.specialSprites.delete(key);}
+  private addPanelButton(panel: Phaser.GameObjects.Container, label: string, action: () => void, x?: number, y?: number, colour = 0x8b68ad): void {
+    const width = this.scale.width;
+    const height = this.scale.height;
+    const bx = x ?? width / 2;
+    const by = y ?? height / 2 + 145;
+    const button = this.add.rectangle(bx, by, Math.min(width - 72, 260), 48, colour).setInteractive({ useHandCursor: true });
+    const text = this.add.text(bx, by, label, { fontFamily: "system-ui", fontSize: "14px", fontStyle: "bold", color: "#ffffff" }).setOrigin(0.5);
+    button.on("pointerdown", action);
+    panel.add([button, text]);
   }
-  private handleKey(event:KeyboardEvent):void {
-    const k=event.key.toLowerCase();
-    if(k==="arrowup"||k==="w")this.move(0,-1);
-    else if(k==="arrowdown"||k==="s")this.move(0,1);
-    else if(k==="arrowleft"||k==="a")this.move(-1,0);
-    else if(k==="arrowright"||k==="d")this.move(1,0);
+
+  private startChallenge(): void {
+    if (this.session.levelNumber % 3 === 1) this.startMemoryChallenge();
+    else if (this.session.levelNumber % 3 === 2) this.startPatternChallenge();
+    else this.startKeyChallenge();
   }
-  private publish(message:string):void {
-    this.onProgress({hearts:this.hearts,coins:this.coins,gems:this.gems,hasKey:this.hasKey,message});
+
+  private startMemoryChallenge(): void {
+    const panel = this.createPanel("Ocean Memory", "Find all three matching pairs. Tap two cards at a time!");
+    const symbols = ["🐬", "🐠", "🐙", "🐬", "🐠", "🐙"];
+    const cards: Array<{ value: string; text: Phaser.GameObjects.Text; button: Phaser.GameObjects.Rectangle; matched: boolean }> = [];
+    const order = [2, 0, 4, 1, 5, 3];
+    let first = -1;
+    let locked = false;
+    let pairs = 0;
+    const width = this.scale.width;
+    const height = this.scale.height;
+    const cardW = Math.min(82, (width - 66) / 3);
+    const cardH = 62;
+    const startX = width / 2 - cardW - 8;
+    const startY = height / 2 - 35;
+    order.forEach((symbolIndex, index) => {
+      const col = index % 3;
+      const row = Math.floor(index / 3);
+      const x = startX + col * (cardW + 8);
+      const y = startY + row * (cardH + 12);
+      const button = this.add.rectangle(x, y, cardW, cardH, 0xeadcf5).setStrokeStyle(2, 0xc8a9dc).setInteractive({ useHandCursor: true });
+      const text = this.add.text(x, y, "❔", { fontFamily: "system-ui", fontSize: "28px" }).setOrigin(0.5);
+      panel.add([button, text]);
+      const card = { value: symbols[symbolIndex]!, text, button, matched: false };
+      cards.push(card);
+      button.on("pointerdown", () => {
+        if (locked || card.matched || text.text !== "❔") return;
+        text.setText(card.value);
+        if (first < 0) { first = index; return; }
+        const firstIndex = first;
+        first = -1;
+        const other = cards[firstIndex]!;
+        if (other.value === card.value) {
+          other.matched = true; card.matched = true; pairs++;
+          if (pairs === 3) this.showChallengeWon();
+        } else {
+          locked = true;
+          this.time.delayedCall(750, () => {
+            if (!this.overlay || !this.overlay.active) return;
+            other.text.setText("❔"); card.text.setText("❔"); locked = false;
+          });
+        }
+      });
+    });
   }
-  private cellX(x:number):number{return this.left+x*this.tile+this.tile/2;}
-  private cellY(y:number):number{return this.top+y*this.tile+this.tile/2;}
+
+  private startPatternChallenge(): void {
+    const panel = this.createPanel("Gem Pattern", "Look at the pattern. Which gem comes next?");
+    const width = this.scale.width;
+    const height = this.scale.height;
+    panel.add(this.add.text(width / 2, height / 2 - 7, "💎   ⭐   💎   ⭐   ?", {
+      fontFamily: "system-ui", fontSize: "29px", color: "#674c83"
+    }).setOrigin(0.5));
+    const options: Array<[string, boolean]> = [["💎", true], ["⭐", false], ["🌙", false]];
+    options.forEach(([symbol, correct], index) => {
+      const x = width / 2 + (index - 1) * 88;
+      const button = this.add.rectangle(x, height / 2 + 75, 70, 62, 0xeadcf5).setStrokeStyle(2, 0xc8a9dc).setInteractive({ useHandCursor: true });
+      const text = this.add.text(x, height / 2 + 75, symbol, { fontFamily: "system-ui", fontSize: "30px" }).setOrigin(0.5);
+      button.on("pointerdown", () => {
+        if (correct) this.showChallengeWon();
+        else this.showRetryHint(panel, "Not quite! Look at the repeating pattern: gem, star, gem, star...");
+      });
+      panel.add([button, text]);
+    });
+  }
+
+  private startKeyChallenge(): void {
+    const panel = this.createPanel("Choose the Magic Key", "The gate is blue. Which key will open it?");
+    const width = this.scale.width;
+    const height = this.scale.height;
+    panel.add(this.add.text(width / 2, height / 2 - 8, "🔵  🚪", { fontFamily: "system-ui", fontSize: "34px" }).setOrigin(0.5));
+    const options: Array<[string, boolean, number]> = [["Pink key 🗝️", false, 0xf0c5df], ["Blue key 🔑", true, 0xb9d9f5], ["Gold key 🗝️", false, 0xf2df9e]];
+    options.forEach(([label, correct, colour], index) => {
+      const y = height / 2 + 52 + index * 48;
+      const button = this.add.rectangle(width / 2, y, Math.min(width - 88, 255), 39, colour).setInteractive({ useHandCursor: true });
+      const text = this.add.text(width / 2, y, label, { fontFamily: "system-ui", fontSize: "13px", fontStyle: "bold", color: "#51445e" }).setOrigin(0.5);
+      button.on("pointerdown", () => {
+        if (correct) this.showChallengeWon();
+        else this.showRetryHint(panel, "That key does not match the blue gate. Try another key!");
+      });
+      panel.add([button, text]);
+    });
+  }
+
+  private showRetryHint(panel: Phaser.GameObjects.Container, message: string): void {
+    const width = this.scale.width;
+    const height = this.scale.height;
+    const hint = this.add.text(width / 2, height - 45, message, {
+      fontFamily: "system-ui", fontSize: "11px", color: "#a34d70", align: "center",
+      wordWrap: { width: width - 46 }
+    }).setOrigin(0.5);
+    panel.add(hint);
+  }
+
+  private showChallengeWon(): void {
+    const panel = this.createPanel("Challenge complete! 🎉", "You earned +10 coins and +1 gem. The magical path is now open!");
+    this.addPanelButton(panel, "CONTINUE ADVENTURE", () => {
+      this.coins += 10;
+      this.gems += 1;
+      this.challengeCleared = true;
+      this.challengeOpen = false;
+      this.overlay?.destroy(true);
+      this.overlay = undefined;
+      this.player.x = STATION_X + 24;
+      this.publish("🌈 Challenge cleared! Your adventure continues from the same place.");
+    });
+  }
+
+  private finishAdventure(): void {
+    if (this.complete) return;
+    this.complete = true;
+    const stars = this.hearts >= 4 ? 3 : this.hearts >= 2 ? 2 : 1;
+    this.publish("🏆 Adventure complete! You reached the magical finish!");
+    this.onComplete({
+      coins: 25 + this.coins * 2 + stars * 5,
+      gems: this.gems,
+      stars,
+      challenge: this.session.challenge
+    });
+  }
+
+  private handleKey(event: KeyboardEvent): void {
+    const key = event.key.toLowerCase();
+    if (key === "arrowright" || key === "d") this.move(1, 0);
+    else if (key === "arrowleft" || key === "a") this.move(-1, 0);
+    else if (key === "arrowup" || key === "w" || key === " ") this.move(0, -1);
+    else if (key === "arrowdown" || key === "s") this.move(0, 1);
+  }
+
+  private publish(message: string): void {
+    if (message === this.lastMessage) return;
+    this.lastMessage = message;
+    this.onProgress({
+      hearts: this.hearts,
+      coins: this.coins,
+      gems: this.gems,
+      hasKey: this.challengeCleared,
+      message
+    });
+  }
 }
