@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { getCharacter, type CharacterId } from "../data/characters";
 import type { ChallengeType, WorldDefinition } from "../data/worlds";
+import type { CharacterWardrobe } from "../data/profiles";
 
 export interface MazeSession {
   characterId: CharacterId;
@@ -8,6 +9,7 @@ export interface MazeSession {
   levelNumber: number;
   challenge: ChallengeType;
   world: WorldDefinition;
+  appearance?: CharacterWardrobe;
 }
 export interface MazeProgress { hearts: number; coins: number; gems: number; hasKey: boolean; message: string }
 export interface MazeReward { coins: number; gems: number; stars: number; challenge: ChallengeType }
@@ -71,7 +73,7 @@ export class GameScene extends Phaser.Scene {
   private grid:number[][]=[];
   private specials=new Map<string,TileItem>();
   private specialSprites=new Map<string,Phaser.GameObjects.Text>();
-  private player!:Phaser.GameObjects.Text;
+  private player!:Phaser.GameObjects.Container;
   private px=1; private py=1; private tile=20; private left=0; private top=0;
   private hearts=5; private coins=0; private gems=0; private hasKey=false;
   private invulnerableUntil=0; private complete=false; private hiddenOpen=false;
@@ -228,7 +230,16 @@ export class GameScene extends Phaser.Scene {
     }
     const portal=this.add.text(this.cellX(EXIT.x),this.cellY(EXIT.y),"🌀",{fontFamily:"system-ui",fontSize:`${Math.max(13,this.tile*.88)}px`}).setOrigin(.5);
     this.tweens.add({targets:portal,scale:1.15,duration:700,yoyo:true,repeat:-1});
-    this.player=this.add.text(this.cellX(this.px),this.cellY(this.py),getCharacter(this.session.characterId).token,{fontFamily:"system-ui",fontSize:`${Math.max(16,this.tile*.96)}px`}).setOrigin(.5).setDepth(10);
+    const character=getCharacter(this.session.characterId);
+    const appearance=this.session.appearance ?? {hairstyle:"🌸",outfit:"👗",accessory:"✨"};
+    this.player=this.add.container(this.cellX(this.px),this.cellY(this.py)).setDepth(10);
+    this.player.add([
+      this.add.circle(0,0,this.tile*.43,character.colour).setStrokeStyle(1.5,0xffffff),
+      this.add.text(0,-this.tile*.02,character.token,{fontFamily:"system-ui",fontSize:`${Math.max(14,this.tile*.77)}px`}).setOrigin(.5),
+      this.add.text(-this.tile*.28,-this.tile*.38,appearance.hairstyle,{fontFamily:"system-ui",fontSize:`${Math.max(7,this.tile*.34)}px`}).setOrigin(.5),
+      this.add.text(this.tile*.30,-this.tile*.37,appearance.accessory,{fontFamily:"system-ui",fontSize:`${Math.max(7,this.tile*.34)}px`}).setOrigin(.5),
+      this.add.text(0,this.tile*.38,appearance.outfit,{fontFamily:"system-ui",fontSize:`${Math.max(7,this.tile*.38)}px`}).setOrigin(.5)
+    ]);
     const ink=this.session.world.id==="space"?"#ffffff":"#59446c";
     this.add.text(w/2,6,`${this.session.world.icon} ${this.session.world.name}  •  LEVEL ${this.session.levelNumber}`,{fontFamily:"system-ui",fontSize:"12px",fontStyle:"bold",color:ink,backgroundColor:"#00000033",padding:{x:8,y:4}}).setOrigin(.5,0);
   }
