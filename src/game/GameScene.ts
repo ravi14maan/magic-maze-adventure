@@ -36,6 +36,7 @@ export class GameScene extends Phaser.Scene {
   private groundY = 0;
   private jumpVelocity = 0;
   private jumping = false;
+  private lastGroundedAt = 0;
   private duckUntil = 0;
   private facing = 1;
   private hearts = 5;
@@ -64,6 +65,7 @@ export class GameScene extends Phaser.Scene {
     const width = this.scale.width;
     const height = this.scale.height;
     this.groundY = Math.floor(height * 0.77);
+    this.lastGroundedAt = this.time.now;
     this.cameras.main.setBackgroundColor(this.session.world.sky);
     this.drawWorld(width, height);
     this.drawHero();
@@ -97,7 +99,7 @@ export class GameScene extends Phaser.Scene {
     if (this.complete || this.challengeOpen || !this.player) return;
     if (dy < 0) {
       const nearGround = this.player.y >= this.groundY - 8;
-      const forgivingGapJump = this.isOverGap(this.player.x) && this.player.y <= this.groundY + 30 && this.jumpVelocity > -20;
+      const forgivingGapJump = this.isOverGap(this.player.x) && this.time.now - this.lastGroundedAt < 220;
       if (!this.jumping && (nearGround || forgivingGapJump)) {
         this.jumping = true;
         this.jumpVelocity = -630;
@@ -133,10 +135,6 @@ export class GameScene extends Phaser.Scene {
       this.tweens.add({ targets: this.leftArm, angle: 14, duration: 95, yoyo: true, repeat: 1 });
       this.tweens.add({ targets: this.rightArm, angle: -14, duration: 95, yoyo: true, repeat: 1 });
       this.tweens.add({ targets: this.player, y: this.groundY - 3, duration: 75, yoyo: true, repeat: 1 });
-    }
-    if (dx > 0 && oldX < 760 && targetX >= 760) {
-      this.checkpointX = 760;
-      this.publish("🏕️ Checkpoint reached! You will restart here if you stumble.");
     }
   }
 
@@ -198,6 +196,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    if (!inGap && this.player.y >= this.groundY - 2) this.lastGroundedAt = this.time.now;
     if (this.player.x >= 820 && this.checkpointX < 820) {
       this.checkpointX = 820;
       this.publish("🏕️ Checkpoint saved! You can keep exploring.");
@@ -462,6 +461,7 @@ export class GameScene extends Phaser.Scene {
       message = "🧚 A fairy helped you at the checkpoint. Try the obstacle again!";
     }
     this.tweens.killTweensOf(this.player);
+    this.tweens.killTweensOf([this.leftLeg, this.rightLeg, this.leftArm, this.rightArm]);
     this.player.setPosition(this.checkpointX, this.groundY);
     this.player.setScale(1, 1);
     this.jumping = false;
