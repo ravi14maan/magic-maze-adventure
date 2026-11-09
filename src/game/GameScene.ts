@@ -23,6 +23,17 @@ const WORLD_LENGTH = 3100;
 const STATION_X = 1500;
 const FINISH_X = 2940;
 const SUPPLIED_HERO_IDS: CharacterId[] = ["normal-girl", "normal-boy", "unicorn", "witch", "princess", "mermaid"];
+const SUPPLIED_ART_BY_CHARACTER: Record<CharacterId, CharacterId> = {
+  "normal-girl": "normal-girl",
+  "normal-boy": "normal-boy",
+  unicorn: "unicorn",
+  witch: "witch",
+  princess: "princess",
+  prince: "princess",
+  "male-explorer": "normal-boy",
+  knight: "normal-boy",
+  mermaid: "mermaid"
+};
 
 export class GameScene extends Phaser.Scene {
   private readonly session: MazeSession;
@@ -656,7 +667,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawHero(): void {
-    const key = "hero-" + this.session.characterId;
+    const suppliedArtId = SUPPLIED_ART_BY_CHARACTER[this.session.characterId];
+    const key = "hero-" + suppliedArtId;
     if (this.textures.exists(key)) {
       const shadow = this.add.ellipse(0, -2, 66, 15, 0x001b3c, 0.38);
       const heroImage = this.add.image(0, 0, key).setOrigin(0.5, 1);
