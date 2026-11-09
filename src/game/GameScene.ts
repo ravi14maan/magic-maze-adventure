@@ -115,10 +115,14 @@ export class GameScene extends Phaser.Scene {
 
   toggleAutoWalk(): boolean {
     if (this.complete || this.challengeOpen || !this.player) return false;
-    const waitingForJump = this.gapPrompted.some((shown, i) => shown && !this.gapActionStarted[i]) ||
-      this.obstacles.some(o => o.prompted && !o.actionStarted && !o.handled);
-    if (!this.autoWalkEnabled && waitingForJump) {
-      this.publish("⚠️ Use the suggested action first: jump over the obstacle or duck under the branch.");
+    const waitingGap = this.gapPrompted.some((shown, i) => shown && !this.gapActionStarted[i]);
+    const waitingObstacle = this.obstacles.find(o => o.prompted && !o.actionStarted && !o.handled);
+    if (!this.autoWalkEnabled && (waitingGap || waitingObstacle)) {
+      this.publish(waitingGap
+        ? "🌊 Gap ahead! Tap ▲ JUMP to continue."
+        : waitingObstacle?.kind === "branch"
+          ? "🌿 Low branch ahead! Tap ▼ DUCK to continue."
+          : "⚠️ Obstacle ahead! Tap ▲ JUMP to continue.");
       return false;
     }
     this.autoWalkEnabled = !this.autoWalkEnabled;
@@ -707,7 +711,7 @@ export class GameScene extends Phaser.Scene {
         return;
       }
       if (!this.gapPrompted[i] && this.player.x < gap.left && nextX >= gap.left - 65) {
-        this.player.x = gap.left - 65;
+        this.player.x = Math.max(this.player.x, gap.left - 65);
         this.gapPrompted[i] = true;
         this.autoWalkEnabled = false;
         this.publish("🌊 A gap is coming! Tap ▲ JUMP once. Walking will continue after your jump.");
@@ -723,7 +727,7 @@ export class GameScene extends Phaser.Scene {
         return;
       }
       if (!nextObstacle.prompted && nextX >= nextObstacle.x - 92) {
-        this.player.x = nextObstacle.x - 92;
+        this.player.x = Math.max(this.player.x, nextObstacle.x - 92);
         nextObstacle.prompted = true;
         this.autoWalkEnabled = false;
         const prompt = nextObstacle.kind === "branch"
@@ -753,14 +757,17 @@ export class GameScene extends Phaser.Scene {
   private loseHeart(message: string): void {
     this.autoWalkEnabled = false;
     const hitObstacle = this.obstacles.find(o => Math.abs(o.x - this.player.x) < 55 && !o.handled);
+    let respawnX = this.player.x - 120;
     if (hitObstacle) {
-      hitObstacle.prompted = false;
+      hitObstacle.prompted = true;
       hitObstacle.actionStarted = false;
+      respawnX = hitObstacle.x - 92;
     }
     const fallenGap = GAP_ZONES.findIndex(g => this.player.x > g.left - 20 && this.player.x < g.right + 20);
     if (fallenGap >= 0) {
-      this.gapPrompted[fallenGap] = false;
+      this.gapPrompted[fallenGap] = true;
       this.gapActionStarted[fallenGap] = false;
+      respawnX = GAP_ZONES[fallenGap]!.left - 65;
     }
     this.hearts--;
     if (this.hearts <= 0) {
@@ -770,7 +777,7 @@ export class GameScene extends Phaser.Scene {
     this.tweens.killTweensOf(this.player);
     this.tweens.killTweensOf([this.leftLeg, this.rightLeg, this.leftArm, this.rightArm]);
     // Respawn just behind the hazard instead of rewinding a long section.
-    this.player.setPosition(Math.max(this.checkpointX, this.player.x - 120), this.groundY);
+    this.player.setPosition(Math.max(this.checkpointX, respawnX), this.groundY);
     this.player.setScale(1, 1);
     this.player.setAngle(0);
     this.autoWalkEnabled = false;
