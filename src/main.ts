@@ -311,12 +311,16 @@ function renderPlay(): void {
     const stopRepeat = (): void => {
       if (holdDelay !== null) window.clearTimeout(holdDelay);
       if (repeatTimer !== null) window.clearInterval(repeatTimer);
+      window.removeEventListener("pointerup", stopRepeat);
+      window.removeEventListener("pointercancel", stopRepeat);
       holdDelay = null;
       repeatTimer = null;
     };
     const handler = (event: PointerEvent): void => {
       event.preventDefault();
       event.stopPropagation();
+      window.addEventListener("pointerup", stopRepeat, { once: true });
+      window.addEventListener("pointercancel", stopRepeat, { once: true });
       const delta = directions[control.dataset.dir ?? ""];
       if (!delta || !currentScene) {
         if (!currentScene) notify("The adventure is still loading. Please tap again.");
@@ -339,7 +343,6 @@ function renderPlay(): void {
     control.addEventListener("pointerup", stopRepeat);
     control.addEventListener("pointercancel", stopRepeat);
     control.addEventListener("lostpointercapture", stopRepeat);
-    window.addEventListener("pointerup", stopRepeat);
     control.addEventListener("click", (event) => event.preventDefault());
   });
 }
