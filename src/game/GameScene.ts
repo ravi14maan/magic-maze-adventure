@@ -317,7 +317,7 @@ export class GameScene extends Phaser.Scene {
         const y = this.groundY - 16 - (i % 3) * 12;
         const colour = [0xff5fa7, 0xff784e, 0x9f70ed, 0xffb33f, 0x2fe1d1][i % 5]!;
         const coral = this.add.graphics();
-        coral.lineStyle(8, colour, 0.98, 1, true);
+        coral.lineStyle(8, colour, 0.98);
         coral.beginPath(); coral.moveTo(x, y); coral.lineTo(x - 7, y - 36); coral.lineTo(x - 22, y - 58); coral.strokePath();
         coral.beginPath(); coral.moveTo(x - 7, y - 36); coral.lineTo(x + 10, y - 62); coral.lineTo(x + 12, y - 81); coral.strokePath();
         coral.beginPath(); coral.moveTo(x + 4, y - 47); coral.lineTo(x + 30, y - 58); coral.strokePath();
@@ -426,7 +426,6 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawHero(): void {
-    const character = getCharacter(this.session.characterId);
     const isBoy = this.session.characterId === "normal-boy" || this.session.characterId === "prince" ||
       this.session.characterId === "male-explorer" || this.session.characterId === "knight";
     const defaultOutfit = isBoy ? "🦺" : "👗";
@@ -668,7 +667,7 @@ export class GameScene extends Phaser.Scene {
 
   // Native DOM overlays are used instead of Phaser canvas hit areas. Android
   // WebView reliably dispatches taps to real buttons, including inside cards.
-  private createPanel(title: string, subtitle: string, icon = "✨"): HTMLDivElement {
+  private createPanel(title: string, subtitle: string, icon = "✨"): HTMLElement {
     this.overlayElement?.remove();
     const host = document.getElementById("maze-host") ?? document.body;
     const overlay = document.createElement("div");
@@ -695,11 +694,11 @@ export class GameScene extends Phaser.Scene {
     return card;
   }
 
-  private challengeContent(panel: HTMLDivElement): HTMLDivElement {
+  private challengeContent(panel: HTMLElement): HTMLDivElement {
     return panel.querySelector<HTMLDivElement>(".adventure-challenge-content")!;
   }
 
-  private addPanelButton(panel: HTMLDivElement, label: string, action: () => void, variant = "primary"): void {
+  private addPanelButton(panel: HTMLElement, label: string, action: () => void, variant = "primary"): void {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "adventure-challenge-button " + variant;
@@ -712,7 +711,7 @@ export class GameScene extends Phaser.Scene {
     this.challengeContent(panel).append(button);
   }
 
-  private addChallengeText(panel: HTMLDivElement, text: string, className = "challenge-instruction"): HTMLParagraphElement {
+  private addChallengeText(panel: HTMLElement, text: string, className = "challenge-instruction"): HTMLParagraphElement {
     const paragraph = document.createElement("p");
     paragraph.className = className;
     paragraph.textContent = text;
@@ -841,7 +840,7 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private showRetryHint(panel: HTMLDivElement, message: string): void {
+  private showRetryHint(panel: HTMLElement, message: string): void {
     let hint = panel.querySelector<HTMLParagraphElement>(".challenge-feedback");
     if (!hint) {
       hint = document.createElement("p");
