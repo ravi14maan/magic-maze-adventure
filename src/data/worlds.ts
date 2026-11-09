@@ -58,7 +58,7 @@ export function difficultyForLevel(levelNumber: number, worldIndex = 0): Difficu
     shortLabel: label,
     hazardCount: Math.min(17, 4 + Math.floor(progressIndex / 4)),
     obstacleSpeed: 1 + progressIndex * 0.025,
-    memoryPairs: Math.min(8, 4 + Math.floor(progressIndex / 6)),
+    memoryPairs: Math.min(8, 4 + Math.floor(progressIndex / 2)),
     challengeSeconds: Math.max(28, Math.round(82 - progressIndex * 1.12))
   };
 }
