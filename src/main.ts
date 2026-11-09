@@ -23,7 +23,6 @@ let currentLevel = 1;
 let currentReward: MazeReward | null = null;
 let game: Phaser.Game | null = null;
 let currentScene: GameScene | null = null;
-let notice = "";
 
 const profile = (): PlayerProfile | null => activeProfile(store);
 const persist = (): void => saveStore(store);
@@ -46,8 +45,12 @@ function destroyGame(): void {
 }
 
 function notify(message: string): void {
-  notice = message;
-  const el = document.querySelector<HTMLElement>("#toast");
+  let el = document.querySelector<HTMLElement>("#toast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "toast";
+    document.body.appendChild(el);
+  }
   if (el) {
     el.textContent = message;
     el.classList.add("show");
@@ -293,7 +296,6 @@ function completeLevel(reward: MazeReward): void {
 function renderResult(): void {
   const r = currentReward ?? {coins:0,gems:0,stars:1,challenge:"classic" as const};
   const nextLevel = currentLevel < 5 ? currentLevel+1 : 1;
-  const hasNext = currentLevel < 5 || currentWorldIndex < 9;
   app!.innerHTML = `
     <main class="screen screen-center result-screen">
       <div class="result-confetti">🎉 ✨ 🌟</div>
@@ -375,7 +377,20 @@ app.addEventListener("click", (event) => {
     const dirs:Record<string,[number,number]>={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
     const d=dirs[button.dataset.dir??""];if(d)currentScene.move(d[0],d[1]);
   } else if (action === "pause") {
-    if (game) { game.scene.pause("MazeScene"); screen="dashboard"; notify("Game paused. Choose Play Adventure to continue your map."); render(); }
+    if (game && !document.querySelector(".pause-overlay")) {
+      game.scene.pause("MazeScene");
+      const overlay = document.createElement("div");
+      overlay.className = "pause-overlay";
+      overlay.innerHTML = `<section class="pause-card"><div class="pause-emoji">⏸️</div><h2>Adventure paused</h2><p>Take a little break, explorer.</p><button class="primary-button wide-button" data-action="resume">Continue maze ▶</button><button class="secondary-button wide-button" data-action="paused-map">Back to level map</button></section>`;
+      app!.appendChild(overlay);
+    }
+  } else if (action === "resume") {
+    document.querySelector(".pause-overlay")?.remove();
+    game?.scene.resume("MazeScene");
+  } else if (action === "paused-map") {
+    game?.scene.resume("MazeScene");
+    screen = "levels";
+    render();
   } else if (action === "next-level") {
     if (currentLevel<5) startLevel(currentLevel+1);
     else { currentWorldIndex=Math.min(9,currentWorldIndex+1);screen="worlds";render(); }
