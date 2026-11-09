@@ -75,6 +75,7 @@ export class GameScene extends Phaser.Scene {
   private px=1; private py=1; private tile=20; private left=0; private top=0;
   private hearts=5; private coins=0; private gems=0; private hasKey=false;
   private invulnerableUntil=0; private complete=false; private hiddenOpen=false;
+  private swipeStartX=0; private swipeStartY=0; private swipePointerId=-1;
 
   constructor(session:MazeSession,onProgress:(p:MazeProgress)=>void,onComplete:(r:MazeReward)=>void) {
     super("MazeScene"); this.session=session; this.onProgress=onProgress; this.onComplete=onComplete;
@@ -84,9 +85,25 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(this.session.world.sky);
     this.buildLevel(); this.drawBoard();
     this.input.keyboard?.on("keydown",this.handleKey,this);
+    this.input.on("pointerdown",(pointer:Phaser.Input.Pointer)=>{
+      this.swipeStartX=pointer.x;
+      this.swipeStartY=pointer.y;
+      this.swipePointerId=pointer.id;
+    });
+    this.input.on("pointerup",(pointer:Phaser.Input.Pointer)=>{
+      if(pointer.id!==this.swipePointerId)return;
+      const dx=pointer.x-this.swipeStartX;
+      const dy=pointer.y-this.swipeStartY;
+      this.swipePointerId=-1;
+      if(Math.max(Math.abs(dx),Math.abs(dy))<28)return;
+      if(Math.abs(dx)>Math.abs(dy))this.move(dx>0?1:-1,0);
+      else this.move(0,dy>0?1:-1);
+    });
     this.scale.on(Phaser.Scale.Events.RESIZE,this.drawBoard,this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN,()=>{
       this.input.keyboard?.off("keydown",this.handleKey,this);
+      this.input.off("pointerdown");
+      this.input.off("pointerup");
       this.scale.off(Phaser.Scale.Events.RESIZE,this.drawBoard,this);
     });
     this.publish("Find the key, dodge the hazards and reach the portal!");
