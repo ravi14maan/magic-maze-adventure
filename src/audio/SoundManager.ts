@@ -36,7 +36,7 @@ class SoundManager {
       const AudioContextClass = window.AudioContext;
       if (!AudioContextClass) return null;
       if (!this.context) this.context = new AudioContextClass();
-      if (this.context.state === "suspended") void this.context.resume();
+      if (this.context.state === "suspended") void this.context.resume().catch(() => undefined);
       return this.context;
     } catch {
       return null;
