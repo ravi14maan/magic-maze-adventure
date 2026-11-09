@@ -106,6 +106,7 @@ export class GameScene extends Phaser.Scene {
       this.input.keyboard?.off("keydown", this.handleKey, this);
       this.input.off("pointerdown");
       this.input.off("pointerup");
+      this.clearChallengeTimer();
       this.overlayElement?.remove();
       this.overlayElement = undefined;
     });
@@ -773,7 +774,15 @@ export class GameScene extends Phaser.Scene {
 
   // Native DOM overlays are used instead of Phaser canvas hit areas. Android
   // WebView reliably dispatches taps to real buttons, including inside cards.
+  private clearChallengeTimer(): void {
+    if (this.challengeTimer !== null) {
+      window.clearInterval(this.challengeTimer);
+      this.challengeTimer = null;
+    }
+  }
+
   private createPanel(title: string, subtitle: string, icon = "✨"): HTMLElement {
+    this.clearChallengeTimer();
     this.overlayElement?.remove();
     const host = document.getElementById("maze-host") ?? document.body;
     const overlay = document.createElement("div");
@@ -826,33 +835,63 @@ export class GameScene extends Phaser.Scene {
   }
 
   private startChallenge(): void {
-    if (this.session.levelNumber % 3 === 1) this.startMemoryChallenge();
-    else if (this.session.levelNumber % 3 === 2) this.startPatternChallenge();
-    else this.startKeyChallenge();
+    // Rotate challenge styles by world and level, so the same mini-game
+    // does not appear at every first level in every world.
+    const variant = (this.session.worldIndex * 5 + this.session.levelNumber - 1) % 4;
+    if (variant === 0) this.startMemoryChallenge();
+    else if (variant === 1) this.startPatternChallenge();
+    else if (variant === 2) this.startKeyChallenge();
+    else this.startRuneSequenceChallenge();
   }
 
   private startMemoryChallenge(): void {
-    const panel = this.createPanel("Ocean Memory", "Find all three matching sea-creature pairs.", "🫧");
-    this.addChallengeText(panel, "Tap two shells to reveal their pictures. Match all three pairs!");
-    const symbols = ["🐬", "🐠", "🐙", "🐬", "🐠", "🐙"];
-    const order = [2, 0, 4, 1, 5, 3];
+    const progressIndex = this.session.worldIndex * 5 + this.session.levelNumber - 1;
+    const pairCount = Math.min(8, 5 + Math.floor(progressIndex / 10));
+    const themes: string[][] = [
+      ["🐬", "🐠", "🐙", "🦀", "🐢", "🦑", "🪼", "🐳"],
+      ["🍬", "🍭", "🍩", "🧁", "🍓", "🍦", "🍪", "🍉"],
+      ["🦋", "🍄", "🌻", "🐿️", "🪵", "🌼", "🐝", "🍃"],
+      ["🦇", "💎", "🕯️", "🕸️", "🦂", "🦉", "🔮", "🪨"],
+      ["❄️", "⛄", "🧤", "🛷", "🧊", "🐧", "🦭", "🌨️"],
+      ["🪐", "🚀", "🌙", "⭐", "🛸", "☄️", "🌍", "👽"],
+      ["👑", "🏰", "🗝️", "🛡️", "⚔️", "💍", "🕯️", "📜"],
+      ["👻", "🦇", "🕯️", "🪦", "🕸️", "🧟", "🔮", "🌙"],
+      ["🧚", "🌷", "🦋", "🌸", "🍀", "✨", "🐝", "🌈"],
+      ["💎", "🔷", "🔮", "🪩", "🧊", "🟣", "🟦", "⭐"]
+    ];
+    const symbols = (themes[this.session.worldIndex] ?? themes[0]!).slice(0, pairCount);
+    const deck = [...symbols, ...symbols];
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deck[i], deck[j]] = [deck[j]!, deck[i]!];
+    }
+
+    const panel = this.createPanel("Memory Reef Challenge", "Find every matching pair before time runs out.", "🫧");
+    this.addChallengeText(panel, "Remember the pictures. Tap two shells each turn and match all the creatures.");
     const grid = document.createElement("div");
     grid.className = "memory-card-grid";
+    grid.dataset.cards = String(deck.length);
     this.challengeContent(panel).append(grid);
     const cards: Array<{ value: string; button: HTMLButtonElement; matched: boolean }> = [];
     let first = -1;
     let locked = false;
     let pairs = 0;
     let moves = 0;
-    const status = this.addChallengeText(panel, "Pairs: 0 / 3   •   Moves: 0", "challenge-status");
+    let timeLeft = Math.max(48, 72 - Math.floor(progressIndex / 5) * 2);
+    const moveLimit = pairCount * 3;
+    const status = this.addChallengeText(panel, "", "challenge-status");
+    const refreshStatus = (): void => {
+      status.textContent = "Pairs " + pairs + "/" + pairCount + "  •  Moves left " + Math.max(0, moveLimit - moves) + "  •  " + timeLeft + "s";
+    };
+    refreshStatus();
 
-    order.forEach((symbolIndex, index) => {
+    deck.forEach((symbol) => {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "memory-card";
       button.textContent = "🐚";
-      button.setAttribute("aria-label", "Hidden memory card");
-      const card = { value: symbols[symbolIndex]!, button, matched: false };
+      button.setAttribute("aria-label", "Hidden memory shell");
+      const card = { value: symbol, button, matched: false };
       cards.push(card);
       grid.append(button);
       button.addEventListener("click", () => {
@@ -861,7 +900,7 @@ export class GameScene extends Phaser.Scene {
         button.textContent = card.value;
         button.classList.add("revealed");
         if (first < 0) {
-          first = index;
+          first = cards.indexOf(card);
           return;
         }
         const firstIndex = first;
@@ -874,11 +913,11 @@ export class GameScene extends Phaser.Scene {
           other.button.classList.add("matched");
           button.classList.add("matched");
           pairs++;
-          status.textContent = "Pairs: " + pairs + " / 3   •   Moves: " + moves;
-          if (pairs === 3) this.showChallengeWon();
+          refreshStatus();
+          if (pairs === pairCount) this.showChallengeWon();
         } else {
           locked = true;
-          status.textContent = "Not a match yet. Try remembering the pictures!";
+          status.textContent = "Not a match. Remember both pictures and try another pair!";
           window.setTimeout(() => {
             if (!this.overlayElement?.isConnected) return;
             other.button.textContent = "🐚";
@@ -888,62 +927,118 @@ export class GameScene extends Phaser.Scene {
             other.button.classList.remove("revealed");
             button.classList.remove("revealed");
             locked = false;
-          }, 850);
+            refreshStatus();
+          }, 720);
+        }
+        if (moves >= moveLimit && pairs < pairCount) {
+          window.setTimeout(() => {
+            if (this.overlayElement?.isConnected) {
+              this.showChallengeFailed(panel, "Move limit reached. Try to remember the shells in fewer moves!", () => this.startMemoryChallenge());
+            }
+          }, 760);
         }
       });
     });
+
+    this.challengeTimer = window.setInterval(() => {
+      if (!this.overlayElement?.isConnected) {
+        this.clearChallengeTimer();
+        return;
+      }
+      timeLeft--;
+      refreshStatus();
+      if (timeLeft <= 0) {
+        this.showChallengeFailed(panel, "Time is up! Take a breath and try the memory challenge again.", () => this.startMemoryChallenge());
+      }
+    }, 1000);
   }
 
   private startPatternChallenge(): void {
-    const panel = this.createPanel("Gem Pattern", "Look carefully at the repeating pattern.", "💎");
-    this.addChallengeText(panel, "Which gem comes next?");
+    const panel = this.createPanel("Crystal Pattern", "Study the full sequence, then choose what belongs in the final space.", "💎");
+    const sequence = ["💎", "⭐", "🐚", "💎", "⭐", "?"];
+    this.addChallengeText(panel, "The pattern repeats in groups of three. Which symbol comes next?");
     const pattern = document.createElement("div");
     pattern.className = "pattern-display";
-    pattern.textContent = "💎   ⭐   💎   ⭐   ?";
+    pattern.textContent = sequence.join("   ");
     this.challengeContent(panel).append(pattern);
-    const options = [["💎", true], ["⭐", false], ["🌙", false]] as const;
+    const options = [["🐚", true], ["💎", false], ["🌙", false], ["🦀", false]] as const;
     const choices = document.createElement("div");
     choices.className = "challenge-choice-row";
     this.challengeContent(panel).append(choices);
-    options.forEach(([symbol, correct]) => {
+    for (const [symbol, correct] of options) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "challenge-choice";
       button.textContent = symbol;
       button.addEventListener("click", () => {
         if (correct) this.showChallengeWon();
-        else this.showRetryHint(panel, "Not quite! The pattern repeats: gem, star, gem, star...");
+        else this.showRetryHint(panel, "Look at the first three symbols. The same order repeats!");
       });
       choices.append(button);
-    });
+    }
   }
 
   private startKeyChallenge(): void {
-    const panel = this.createPanel("Choose the Magic Key", "Match the key to the gate to continue.", "🔑");
-    this.addChallengeText(panel, "The gate is blue. Which key will open it?");
+    const panel = this.createPanel("The Royal Lock", "The lock needs the key with the correct colour AND symbol.", "🗝️");
+    this.addChallengeText(panel, "The gate shows a BLUE STAR. Choose the only key that matches both clues.");
     const door = document.createElement("div");
     door.className = "pattern-display";
-    door.textContent = "🔵  🚪";
+    door.textContent = "🔵  ⭐  🚪";
     this.challengeContent(panel).append(door);
     const options = [
-      ["Pink key 🗝️", false, "pink"],
-      ["Blue key 🔑", true, "blue"],
-      ["Gold key 🗝️", false, "gold"]
+      ["🔴  ⭐  Red star key", false, "pink"],
+      ["🔵  🌙  Blue moon key", false, "blue"],
+      ["🔵  ⭐  Blue star key", true, "blue"],
+      ["🟡  ⭐  Gold star key", false, "gold"]
     ] as const;
     const choices = document.createElement("div");
     choices.className = "challenge-key-list";
     this.challengeContent(panel).append(choices);
-    options.forEach(([label, correct, colour]) => {
+    for (const [label, correct, colour] of options) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "challenge-key " + colour;
       button.textContent = label;
       button.addEventListener("click", () => {
         if (correct) this.showChallengeWon();
-        else this.showRetryHint(panel, "That key does not match the blue gate. Try another key!");
+        else this.showRetryHint(panel, "Check both clues: the key must be blue AND have a star.");
       });
       choices.append(button);
-    });
+    }
+  }
+
+  private startRuneSequenceChallenge(): void {
+    const panel = this.createPanel("Ancient Rune Code", "Remember the order and enter all four runes.", "🔮");
+    const target = ["🐚", "⭐", "🐠", "💎"];
+    this.addChallengeText(panel, "Memorise this code. Then tap the runes in the same order.");
+    const code = document.createElement("div");
+    code.className = "pattern-display rune-code";
+    code.textContent = target.join("  →  ");
+    this.challengeContent(panel).append(code);
+    let step = 0;
+    const status = this.addChallengeText(panel, "Code progress: 0 / 4", "challenge-status");
+    const choices = document.createElement("div");
+    choices.className = "challenge-choice-row";
+    this.challengeContent(panel).append(choices);
+    const symbols = ["🐚", "⭐", "🐠", "💎", "🦀", "🌙"];
+    for (const symbol of symbols) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "challenge-choice rune-choice";
+      button.textContent = symbol;
+      button.addEventListener("click", () => {
+        if (symbol === target[step]) {
+          step++;
+          status.textContent = "Code progress: " + step + " / 4";
+          if (step === target.length) this.showChallengeWon();
+        } else {
+          step = 0;
+          status.textContent = "Wrong order! Code progress reset to 0 / 4.";
+          this.showRetryHint(panel, "Start again and remember the four-rune order.");
+        }
+      });
+      choices.append(button);
+    }
   }
 
   private showRetryHint(panel: HTMLElement, message: string): void {
@@ -954,6 +1049,12 @@ export class GameScene extends Phaser.Scene {
       this.challengeContent(panel).append(hint);
     }
     hint.textContent = message;
+  }
+
+  private showChallengeFailed(panel: HTMLElement, message: string, retry: () => void): void {
+    const failed = this.createPanel("Almost there!", message, "🧩");
+    this.addChallengeText(failed, "Your adventure is paused here. You do not lose your progress.");
+    this.addPanelButton(failed, "TRY AGAIN", retry, "primary");
   }
 
   private showChallengeWon(): void {
