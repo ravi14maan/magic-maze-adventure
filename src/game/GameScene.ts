@@ -78,6 +78,8 @@ export class GameScene extends Phaser.Scene {
   private hearts=5; private coins=0; private gems=0; private hasKey=false;
   private invulnerableUntil=0; private complete=false; private hiddenOpen=false;
   private swipeStartX=0; private swipeStartY=0; private swipePointerId=-1;
+  private ready=false;
+  private pendingMoves:Array<[number,number]> = [];
 
   constructor(session:MazeSession,onProgress:(p:MazeProgress)=>void,onComplete:(r:MazeReward)=>void) {
     super("MazeScene"); this.session=session; this.onProgress=onProgress; this.onComplete=onComplete;
@@ -86,6 +88,9 @@ export class GameScene extends Phaser.Scene {
   create():void {
     this.cameras.main.setBackgroundColor(this.session.world.sky);
     this.buildLevel(); this.drawBoard();
+    this.ready=true;
+    const queuedMoves=this.pendingMoves.splice(0);
+    queuedMoves.forEach(([dx,dy])=>this.move(dx,dy));
     this.input.keyboard?.on("keydown",this.handleKey,this);
     this.input.on("pointerdown",(pointer:Phaser.Input.Pointer)=>{
       this.swipeStartX=pointer.x;
@@ -112,7 +117,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   move(dx:number,dy:number):void {
-    if(this.complete || !this.player)return;
+    if(this.complete)return;
+    if(!this.ready){this.pendingMoves.push([dx,dy]);return;}
+    if(!this.player)return;
     let x=this.px+dx,y=this.py+dy;
     const targetCell=this.grid[y]?.[x];
     if(targetCell!==0 && !(targetCell===2 && this.hiddenOpen)){
