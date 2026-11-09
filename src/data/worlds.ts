@@ -12,16 +12,16 @@ export interface WorldDefinition {
 }
 
 export const WORLDS: readonly WorldDefinition[] = [
-  { id: "underwater", name: "Underwater", icon: "🫧", description: "Dive into the coral maze", sky: "#dff7ff", floor: 0xe4faff, wall: 0x277b99, accent: 0x42bfd0 },
-  { id: "candy-kingdom", name: "Candy Kingdom", icon: "🍭", description: "Sweet paths and sticky surprises", sky: "#fff0fa", floor: 0xffe6f4, wall: 0xb34c8d, accent: 0xf28aba },
-  { id: "enchanted-forest", name: "Enchanted Forest", icon: "🌳", description: "Follow the sparkling forest trail", sky: "#e9ffe9", floor: 0xe5f4d8, wall: 0x407a47, accent: 0x8bcf79 },
-  { id: "scary-cave", name: "Scary Cave", icon: "🦇", description: "A spooky but friendly cave", sky: "#eee7ff", floor: 0xe9e1f6, wall: 0x55466f, accent: 0x9d83c4 },
-  { id: "frozen-kingdom", name: "Frozen Kingdom", icon: "❄️", description: "Slide through icy corridors", sky: "#e9f6ff", floor: 0xe4f2ff, wall: 0x477ba8, accent: 0x8bcef4 },
-  { id: "space", name: "Space", icon: "🚀", description: "Explore a galaxy of twisty paths", sky: "#171d46", floor: 0x30345f, wall: 0x11152f, accent: 0xb7a5ff },
-  { id: "magic-castle", name: "Magic Castle", icon: "🏰", description: "Find the royal secret passage", sky: "#fff0dc", floor: 0xffe8ca, wall: 0x95613f, accent: 0xe8ae62 },
-  { id: "ghost-world", name: "Ghost World", icon: "👻", description: "Meet friendly ghosts in the mist", sky: "#e8eaff", floor: 0xe8e8f8, wall: 0x5c608e, accent: 0xa6a7e7 },
-  { id: "fairy-world", name: "Fairy World", icon: "🧚", description: "Wander through the fairy glade", sky: "#fff0f6", floor: 0xfde4f3, wall: 0xa65d9a, accent: 0xf0a2d2 },
-  { id: "crystal-cave", name: "Crystal Cave", icon: "💎", description: "Discover the glowing crystal maze", sky: "#e8f9ff", floor: 0xdff3fa, wall: 0x3f718a, accent: 0x70d3dc }
+  { id: "underwater", name: "Underwater", icon: "🫧", description: "Explore a colourful underwater trail", sky: "#dff7ff", floor: 0xe4faff, wall: 0x277b99, accent: 0x42bfd0 },
+  { id: "candy-kingdom", name: "Candy Kingdom", icon: "🍭", description: "Bounce through a playful candy adventure", sky: "#fff0fa", floor: 0xffe6f4, wall: 0xb34c8d, accent: 0xf28aba },
+  { id: "enchanted-forest", name: "Enchanted Forest", icon: "🌳", description: "Discover glowing paths and forest friends", sky: "#e9ffe9", floor: 0xe5f4d8, wall: 0x407a47, accent: 0x8bcf79 },
+  { id: "scary-cave", name: "Scary Cave", icon: "🦇", description: "Explore a friendly cave full of surprises", sky: "#eee7ff", floor: 0xe9e1f6, wall: 0x55466f, accent: 0x9d83c4 },
+  { id: "frozen-kingdom", name: "Frozen Kingdom", icon: "❄️", description: "Slide across a sparkling frozen kingdom", sky: "#e9f6ff", floor: 0xe4f2ff, wall: 0x477ba8, accent: 0x8bcef4 },
+  { id: "space", name: "Space", icon: "🚀", description: "Leap between colourful planets and stars", sky: "#171d46", floor: 0x30345f, wall: 0x11152f, accent: 0xb7a5ff },
+  { id: "magic-castle", name: "Magic Castle", icon: "🏰", description: "Explore royal halls and hidden stairways", sky: "#fff0dc", floor: 0xffe8ca, wall: 0x95613f, accent: 0xe8ae62 },
+  { id: "ghost-world", name: "Ghost World", icon: "👻", description: "Meet friendly ghosts and floating platforms", sky: "#e8eaff", floor: 0xe8e8f8, wall: 0x5c608e, accent: 0xa6a7e7 },
+  { id: "fairy-world", name: "Fairy World", icon: "🧚", description: "Follow fairy lights through a flower garden", sky: "#fff0f6", floor: 0xfde4f3, wall: 0xa65d9a, accent: 0xf0a2d2 },
+  { id: "crystal-cave", name: "Crystal Cave", icon: "💎", description: "Explore glittering tunnels and crystal bridges", sky: "#e8f9ff", floor: 0xdff3fa, wall: 0x3f718a, accent: 0x70d3dc }
 ] as const;
 
 export const CHALLENGES: readonly ChallengeType[] = ["classic", "monster", "obstacle", "key-door", "tricky"];
@@ -32,11 +32,11 @@ export function challengeForLevel(levelNumber: number): ChallengeType {
 
 export function challengeLabel(challenge: ChallengeType): string {
   const labels: Record<ChallengeType, string> = {
-    classic: "Classic Maze",
-    monster: "Monster Maze",
-    obstacle: "Obstacle Maze",
-    "key-door": "Key & Door Maze",
-    tricky: "Tricky Maze"
+    classic: "Exploration Trail",
+    monster: "Monster Encounter",
+    obstacle: "Obstacle Course",
+    "key-door": "Magic Key Quest",
+    tricky: "Secret Passage Quest"
   };
   return labels[challenge];
 }
