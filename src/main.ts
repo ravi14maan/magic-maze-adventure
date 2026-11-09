@@ -6,7 +6,7 @@ import {
   type PlayerProfile, type ProfileStore
 } from "./data/profiles";
 import {
-  WORLDS, challengeForLevel, challengeLabel, isLevelUnlocked, isWorldUnlocked, levelKey
+  WORLDS, challengeForLevel, challengeLabel, difficultyForLevel, isLevelUnlocked, isWorldUnlocked, levelKey
 } from "./data/worlds";
 import { GameScene, type MazeProgress, type MazeReward } from "./game/GameScene";
 import type { MazeSession } from "./game/GameScene";
@@ -168,12 +168,15 @@ function renderLevels(): void {
         ${[1,2,3,4,5].map(n => {
           const unlocked = isLevelUnlocked(p.completedLevels,currentWorldIndex,n);
           const done = p.completedLevels.includes(levelKey(currentWorldIndex,n));
-          const challenge = challengeForLevel(n);
+          const challenge = challengeForLevel(n,currentWorldIndex);
+          const difficulty = difficultyForLevel(n,currentWorldIndex);
           const icons: Record<string,string> = {classic:"🧩",monster:"👾",obstacle:"⚡","key-door":"🗝️",tricky:"🔮"};
           return `
             <button class="level-card ${done ? "done" : ""} ${unlocked ? "" : "locked"}" data-action="level" data-level="${n}" ${unlocked ? "" : "disabled"}>
               <span class="level-number">${done ? "✓" : unlocked ? n : "🔒"}</span>
-              <strong>Level ${n}</strong><small>${icons[challenge]} ${challengeLabel(challenge)}</small>
+              <strong>Level ${n}</strong>
+              <span class="difficulty-chip difficulty-${difficulty.rank}">${difficulty.label}</span>
+              <small>${icons[challenge]} ${challengeLabel(challenge)}</small>
               <span class="level-stars">${done ? "★★★" : "☆☆☆"}</span>
             </button>`;
         }).join("")}
@@ -265,12 +268,14 @@ function renderAvatar(): void {
 function renderPlay(): void {
   const p = currentProfileOrThrow();
   const world = WORLDS[currentWorldIndex]!;
-  const challenge = challengeForLevel(currentLevel);
+  const challenge = challengeForLevel(currentLevel,currentWorldIndex);
+  const difficulty = difficultyForLevel(currentLevel,currentWorldIndex);
   app!.innerHTML = `
     <main class="play-screen">
       <header class="play-topbar">
         <button class="play-back" data-action="levels" aria-label="Back to levels">← <span>Map</span></button>
         <div class="play-title"><strong>${world.icon} ${world.name}</strong><small>Level ${currentLevel} · Side-view Adventure</small></div>
+        <span class="difficulty-chip difficulty-${difficulty.rank}" id="play-difficulty">${difficulty.label}</span>
         <div class="play-wallet">🪙 <b id="hud-coins">0</b></div>
         <button class="pause-button" data-action="pause">Ⅱ</button>
       </header>
