@@ -348,6 +348,7 @@ function completeLevel(reward: MazeReward): void {
   p.gems += paidReward.gems;
   p.trophies += alreadyDone ? 0 : paidReward.stars;
   updateProfile(store,p);
+  gameAudio.play("success");
   currentReward = { ...paidReward, stars: alreadyDone ? 1 : reward.stars };
   screen = "result";
   render();
@@ -397,7 +398,7 @@ app.addEventListener("click", (event) => {
   const p = profile();
 
   if (action === "select-profile") {
-    store.activeProfileId = button.dataset.id ?? null; persist(); screen = "dashboard"; render();
+    store.activeProfileId = button.dataset.id ?? null; persist(); configureAudio(profile()); screen = "dashboard"; render();
   } else if (action === "profiles") {
     screen = "profiles"; render();
   } else if (action === "create-profile") {
