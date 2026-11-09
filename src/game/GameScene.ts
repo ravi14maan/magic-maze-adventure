@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import type { CharacterId } from "../data/characters";
-import type { ChallengeType, WorldDefinition } from "../data/worlds";
+import { difficultyForLevel, type ChallengeType, type WorldDefinition } from "../data/worlds";
 import type { CharacterWardrobe } from "../data/profiles";
 
 export interface MazeSession {
@@ -51,6 +51,10 @@ export class GameScene extends Phaser.Scene {
   private autoWalkEnabled = false;
   private walkCycle = 0;
   private heroImage?: Phaser.GameObjects.Image;
+  private playerShadow?: Phaser.GameObjects.Ellipse;
+  private heroBaseScale = 1;
+  private gapZones: Gap[] = [];
+  private ambientTick = 0;
   private challengeTimer: number | null = null;
   private readonly gapPrompted = [false, false];
   private readonly gapActionStarted = [false, false];
@@ -80,6 +84,7 @@ export class GameScene extends Phaser.Scene {
     this.groundY = Math.floor(height * 0.77);
     this.lastGroundedAt = this.time.now;
     this.autoWalkEnabled = false;
+    this.gapZones = this.buildGapLayout();
     this.cameras.main.setBackgroundColor(this.session.world.sky);
     this.drawWorld(width, height);
     this.drawHero();
@@ -142,13 +147,17 @@ export class GameScene extends Phaser.Scene {
       if (!this.jumping && (nearGround || coyoteWindow)) {
         this.jumping = true;
         this.jumpVelocity = -690;
-        this.player.setAngle(-3);
+        this.player.setAngle(-7);
+        if (this.heroImage) {
+          this.heroImage.setAngle(-8 * this.facing);
+          this.heroImage.setScale(this.heroBaseScale * 0.92, this.heroBaseScale * 1.08);
+        }
         const pendingObstacle = this.obstacles.find(o => o.prompted && !o.actionStarted && !o.handled);
         if (pendingObstacle) {
           pendingObstacle.actionStarted = true;
           this.autoWalkEnabled = true;
         }
-        const pendingGap = GAP_ZONES.findIndex((_gap, i) => this.gapPrompted[i] && !this.gapActionStarted[i]);
+        const pendingGap = this.gapZones.findIndex((_gap, i) => this.gapPrompted[i] && !this.gapActionStarted[i]);
         if (pendingGap >= 0) {
           this.gapActionStarted[pendingGap] = true;
           this.autoWalkEnabled = true;
@@ -201,6 +210,17 @@ export class GameScene extends Phaser.Scene {
     if (this.autoWalkEnabled) this.advanceAutoWalk(dt);
     if (this.challengeOpen || this.complete) return;
     const inGap = this.isOverGap(this.player.x);
+    if (this.jumping) {
+      const jumpHeight = Phaser.Math.Clamp((this.groundY - this.player.y) / 190, 0, 1);
+      if (this.heroImage) {
+        this.heroImage.setAngle(-7 * this.facing * jumpHeight);
+        this.heroImage.setScale(this.heroBaseScale * (1 - jumpHeight * 0.07), this.heroBaseScale * (1 + jumpHeight * 0.1));
+      }
+      if (this.playerShadow) {
+        this.playerShadow.setScale(1 - jumpHeight * 0.34, 1);
+        this.playerShadow.setAlpha(0.38 - jumpHeight * 0.23);
+      }
+    }
     if (this.jumping || inGap) {
       this.jumpVelocity += 840 * dt;
       this.player.y += this.jumpVelocity * dt;
@@ -210,6 +230,20 @@ export class GameScene extends Phaser.Scene {
         this.jumping = false;
         this.player.setScale(this.facing, 1);
         this.player.setAngle(0);
+        if (this.heroImage) {
+          this.heroImage.setAngle(0);
+          this.heroImage.setScale(this.heroBaseScale);
+          this.heroImage.y = 0;
+        }
+        if (this.playerShadow) {
+          this.playerShadow.setScale(1, 1);
+          this.playerShadow.setAlpha(0.38);
+        }
+        this.tweens.add({ targets: this.player, scaleX: this.facing * 1.07, scaleY: 0.93, duration: 95, yoyo: true, ease: "Quad.easeOut" });
+        this.time.delayedCall(110, () => {
+          if (this.player && !this.jumping) this.player.setScale(this.facing, 1);
+        });
+        this.emitLandingSparkles();
         this.publish("🌟 Safe landing!");
       } else if (this.player.y > this.scale.height + 105) {
         this.loseHeart("You fell into the gap. Try jumping a little earlier!");
@@ -266,17 +300,33 @@ export class GameScene extends Phaser.Scene {
       this.rightLeg.angle = Math.sin(this.walkCycle + Math.PI) * 22;
       this.leftArm.angle = Math.sin(this.walkCycle + Math.PI) * 17;
       this.rightArm.angle = Math.sin(this.walkCycle) * 17;
-      this.player.y = this.groundY + Math.abs(Math.sin(this.walkCycle * 2)) * 2;
-      this.player.setAngle(Math.sin(this.walkCycle) * 1.8);
+      const stride = Math.sin(this.walkCycle);
+      const bounce = Math.abs(Math.sin(this.walkCycle * 2));
+      this.player.y = this.groundY + bounce * 3;
+      this.player.setAngle(stride * 2.3);
       if (this.heroImage) {
-        this.heroImage.setAngle(Math.sin(this.walkCycle) * 1.5);
-        this.heroImage.setScale(this.heroImage.scaleX, 1 + Math.sin(this.walkCycle * 2) * 0.012);
+        this.heroImage.setAngle(stride * 4.2);
+        const stretch = Math.sin(this.walkCycle * 2) * 0.035;
+        this.heroImage.setScale(this.heroBaseScale * (1 + stretch), this.heroBaseScale * (1 - stretch * 0.72));
+        this.heroImage.y = -bounce * 3.5;
+      }
+      if (this.playerShadow) {
+        this.playerShadow.setScale(1 - bounce * 0.1, 1);
+        this.playerShadow.setAlpha(0.34 - bounce * 0.04);
       }
     } else if (!this.autoWalkEnabled && !this.jumping && !inGap) {
       this.leftLeg.angle = 0; this.rightLeg.angle = 0;
       this.leftArm.angle = 0; this.rightArm.angle = 0;
       this.player.setAngle(0);
-      if (this.heroImage) this.heroImage.setAngle(0);
+      if (this.heroImage) {
+        this.heroImage.setAngle(0);
+        this.heroImage.setScale(this.heroBaseScale);
+        this.heroImage.y = 0;
+      }
+      if (this.playerShadow) {
+        this.playerShadow.setScale(1, 1);
+        this.playerShadow.setAlpha(0.38);
+      }
     }
     if (this.player.x >= 820 && this.checkpointX < 820) {
       this.checkpointX = 820;
@@ -287,6 +337,93 @@ export class GameScene extends Phaser.Scene {
       this.publish("🏕️ Another checkpoint saved!");
     }
     if (this.player.x >= FINISH_X) this.finishAdventure();
+  }
+
+  private buildGapLayout(): Gap[] {
+    const rank = difficultyForLevel(this.session.levelNumber, this.session.worldIndex).rank;
+    if (rank === 0) return [];
+    if (rank === 1) return [{ left: 1100, right: 1190 }];
+    const width = Math.min(142, 90 + (rank - 2) * 6);
+    return [
+      { left: 990, right: 990 + width },
+      { left: 2180, right: 2180 + width }
+    ];
+  }
+
+  private emitLandingSparkles(): void {
+    for (let i = 0; i < 7; i++) {
+      const particle = this.add.circle(
+        this.player.x + (i - 3) * 12,
+        this.groundY - 5,
+        2 + (i % 3),
+        i % 2 ? 0xffe88b : 0xb8fbff,
+        0.9
+      ).setDepth(22);
+      this.tweens.add({
+        targets: particle,
+        x: particle.x + (i - 3) * 5,
+        y: particle.y - 14 - (i % 3) * 6,
+        alpha: 0,
+        scale: 0.25,
+        duration: 360 + i * 24,
+        onComplete: () => particle.destroy()
+      });
+    }
+  }
+
+  private drawAmbientParallax(width: number, height: number, underwater: boolean): void {
+    const themes: string[][] = [
+      ["🫧", "🐠", "🪼", "✨", "🐚"],
+      ["🍭", "🍬", "🍩", "✨", "🍓"],
+      ["🦋", "🍃", "🌼", "✨", "🍄"],
+      ["🦇", "🔮", "🕯️", "✨", "🕸️"],
+      ["❄️", "🧊", "🌨️", "✨", "⛄"],
+      ["⭐", "🪐", "☄️", "✨", "🌙"],
+      ["👑", "🏰", "🛡️", "✨", "💫"],
+      ["👻", "🌙", "🦇", "✨", "🕯️"],
+      ["🧚", "🌸", "🦋", "✨", "🌷"],
+      ["💎", "🔷", "🔮", "✨", "🪩"]
+    ];
+    const symbols = themes[this.session.worldIndex] ?? themes[0]!;
+    const itemCount = underwater ? 20 : 15;
+    for (let i = 0; i < itemCount; i++) {
+      const x = 30 + (i * 83) % (width * 2.15);
+      const y = 44 + (i * 59) % Math.max(120, height * 0.58);
+      const symbol = symbols[i % symbols.length]!;
+      const particle = this.add.text(x, y, symbol, {
+        fontFamily: "system-ui",
+        fontSize: (underwater ? 17 + (i % 4) * 5 : 20 + (i % 3) * 7) + "px"
+      }).setOrigin(0.5).setAlpha(underwater ? 0.28 : 0.22)
+        .setScrollFactor(0.16 + (i % 3) * 0.08)
+        .setDepth(-3 + (i % 2));
+      this.tweens.add({
+        targets: particle,
+        y: y - 12 - (i % 4) * 5,
+        angle: i % 2 ? 12 : -12,
+        alpha: underwater ? 0.42 : 0.36,
+        duration: 1900 + (i % 5) * 370,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut"
+      });
+    }
+
+    // Soft foreground glints move at a different depth from the distant icons.
+    for (let i = 0; i < 12; i++) {
+      const x = 45 + (i * 97) % width;
+      const y = 24 + (i * 71) % Math.max(100, height * 0.68);
+      const glint = this.add.circle(x, y, 2 + (i % 3), 0xe5ffff, 0.24)
+        .setScrollFactor(0.46)
+        .setDepth(-1);
+      this.tweens.add({
+        targets: glint,
+        alpha: 0.75,
+        scale: 1.8,
+        duration: 1200 + (i % 4) * 260,
+        yoyo: true,
+        repeat: -1
+      });
+    }
   }
 
   private drawWorld(width: number, height: number): void {
@@ -405,7 +542,15 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    const groundSegments: Array<[number, number]> = [[0, 990], [1110, 2180], [2310, WORLD_LENGTH]];
+    this.drawAmbientParallax(width, height, underwater);
+
+    const groundSegments: Array<[number, number]> = [];
+    let segmentStart = 0;
+    for (const gap of this.gapZones) {
+      groundSegments.push([segmentStart, gap.left]);
+      segmentStart = gap.right;
+    }
+    groundSegments.push([segmentStart, WORLD_LENGTH]);
     for (const [start, end] of groundSegments) {
       const platformColour = underwater ? 0x28616d : floor;
       const topColour = underwater ? 0x36c8d0 : accent;
@@ -422,7 +567,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    for (const gap of GAP_ZONES) {
+    for (const gap of this.gapZones) {
       this.add.rectangle((gap.left + gap.right) / 2, this.groundY + 24, gap.right - gap.left, 48, underwater ? 0x021c48 : 0x35435a, 0.96);
       if (underwater) {
         this.add.text((gap.left + gap.right) / 2, this.groundY + 45, "🫧", { fontFamily: "system-ui", fontSize: "22px" }).setOrigin(0.5);
@@ -431,22 +576,50 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    const obstacleDefs: Array<[number, ObstacleKind]> = [
-      [330, "log"], [555, "rock"], [770, "monster"], [1270, "branch"], [1390, "log"],
-      [1740, "monster"], [1900, "rock"], [2070, "branch"], [2490, "log"], [2635, "rock"], [2800, "monster"]
-    ];
+    const difficulty = difficultyForLevel(this.session.levelNumber, this.session.worldIndex);
+    let seed = (this.session.worldIndex + 1) * 997 + this.session.levelNumber * 131;
+    const random = (): number => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
+
+    const obstacleKinds: ObstacleKind[] = difficulty.rank === 0
+      ? ["log", "rock"]
+      : difficulty.rank < 3
+        ? ["log", "rock", "monster"]
+        : ["log", "rock", "monster", "branch"];
+    const obstacleDefs: Array<[number, ObstacleKind]> = [];
+    const obstacleCount = difficulty.hazardCount;
+    const routeStart = 290;
+    const routeEnd = FINISH_X - 210;
+    for (let i = 0; i < obstacleCount; i++) {
+      const progress = (i + 0.5 + (random() - 0.5) * 0.45) / obstacleCount;
+      let x = Math.round(routeStart + progress * (routeEnd - routeStart));
+      // Keep a clear approach to the challenge station and enough room around gaps.
+      if (Math.abs(x - STATION_X) < 175) x = x < STATION_X ? STATION_X - 190 : STATION_X + 190;
+      for (const gap of this.gapZones) {
+        if (Math.abs(x - gap.left) < 155) x = gap.left - 165;
+        else if (Math.abs(x - gap.right) < 155) x = gap.right + 165;
+      }
+      x = Phaser.Math.Clamp(x, routeStart, routeEnd);
+      const kind = obstacleKinds[Math.floor(random() * obstacleKinds.length)]!;
+      obstacleDefs.push([x, kind]);
+    }
+    obstacleDefs.sort((a, b) => a[0] - b[0]);
+
     for (const [x, kind] of obstacleDefs) {
       const icon: Record<ObstacleKind, string> = { log: "🪵", rock: "🪨", branch: "🌿", monster: "👾" };
       const y = kind === "branch" ? this.groundY - 150 : this.groundY - 27;
       const sprite = this.add.text(x, y, icon[kind], {
         fontFamily: "system-ui", fontSize: kind === "branch" ? "49px" : "42px"
       }).setOrigin(0.5);
-      if (kind === "rock") this.tweens.add({ targets: sprite, x: x + 22, duration: 520, yoyo: true, repeat: -1 });
-      if (kind === "monster") this.tweens.add({ targets: sprite, y: y - 11, angle: 7, duration: 600, yoyo: true, repeat: -1 });
+      if (kind === "rock") this.tweens.add({ targets: sprite, x: x + 22 + difficulty.rank * 2, duration: Math.max(260, 620 / difficulty.obstacleSpeed), yoyo: true, repeat: -1 });
+      if (kind === "monster") this.tweens.add({ targets: sprite, y: y - 11 - difficulty.rank, angle: 7, duration: Math.max(300, 680 / difficulty.obstacleSpeed), yoyo: true, repeat: -1 });
       this.obstacles.push({ x, kind, sprite, handled: false, prompted: false, actionStarted: false });
     }
 
-    for (const x of [920, 2110]) {
+    for (const gap of this.gapZones) {
+      const x = (gap.left + gap.right) / 2 - 42;
       const cue = this.add.text(x, this.groundY - 74, "⬆ JUMP!", {
         fontFamily: "system-ui", fontSize: "15px", fontStyle: "bold", color: "#ffffff",
         backgroundColor: "#087fa6", padding: { x: 7, y: 4 }
@@ -454,13 +627,16 @@ export class GameScene extends Phaser.Scene {
       this.tweens.add({ targets: cue, y: cue.y - 8, alpha: 0.55, duration: 560, yoyo: true, repeat: -1 });
     }
 
-    const pickupDefs: Array<[number, number, "coin" | "gem"]> = [
-      [205, this.groundY - 85, "coin"], [255, this.groundY - 125, "coin"], [440, this.groundY - 95, "gem"],
-      [660, this.groundY - 115, "coin"], [900, this.groundY - 90, "coin"], [1165, this.groundY - 105, "coin"],
-      [1350, this.groundY - 90, "gem"], [1620, this.groundY - 105, "coin"], [1810, this.groundY - 115, "coin"],
-      [1980, this.groundY - 95, "gem"], [2390, this.groundY - 105, "coin"], [2550, this.groundY - 125, "gem"],
-      [2740, this.groundY - 92, "coin"]
-    ];
+    const pickupDefs: Array<[number, number, "coin" | "gem"]> = [];
+    const pickupCount = 8 + Math.floor(difficulty.rank * 0.9);
+    for (let i = 0; i < pickupCount; i++) {
+      const progress = (i + 0.5 + (random() - 0.5) * 0.55) / pickupCount;
+      let x = Math.round(185 + progress * (FINISH_X - 365));
+      if (Math.abs(x - STATION_X) < 100) x += x < STATION_X ? -105 : 105;
+      const y = this.groundY - 74 - Math.round(random() * (40 + difficulty.rank * 4));
+      const kind: "coin" | "gem" = random() > (0.72 - difficulty.rank * 0.015) ? "gem" : "coin";
+      pickupDefs.push([x, y, kind]);
+    }
     for (const [x, y, kind] of pickupDefs) {
       const sprite = this.add.text(x, y, kind === "coin" ? "🪙" : "💎", {
         fontFamily: "system-ui", fontSize: "28px"
@@ -490,8 +666,10 @@ export class GameScene extends Phaser.Scene {
       heroImage.setScale(scale);
       heroImage.setPosition(0, 0);
       this.heroImage = heroImage;
-      // The submitted artwork is the playable character; subtle bob/lean animation
-      // gives the still illustration a readable running/walking motion.
+      this.heroBaseScale = scale;
+      this.playerShadow = shadow;
+      // The submitted artwork is the playable character; squash, lean, run bounce
+      // and jump/landing motion animate the supplied art without replacing it.
       this.leftLeg = this.add.graphics();
       this.rightLeg = this.add.graphics();
       this.leftArm = this.add.graphics();
@@ -704,8 +882,8 @@ export class GameScene extends Phaser.Scene {
     const nextX = Math.min(FINISH_X + 30, this.player.x + walkSpeed * dt);
 
     // Stop before gaps and ask for one jump. The walk toggle is re-enabled by the jump tap.
-    for (let i = 0; i < GAP_ZONES.length; i++) {
-      const gap = GAP_ZONES[i]!;
+    for (let i = 0; i < this.gapZones.length; i++) {
+      const gap = this.gapZones[i]!;
       if (this.gapPrompted[i] && !this.gapActionStarted[i]) {
         this.autoWalkEnabled = false;
         return;
@@ -751,7 +929,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private isOverGap(x: number): boolean {
-    return GAP_ZONES.some(g => x > g.left && x < g.right);
+    return this.gapZones.some(g => x > g.left && x < g.right);
   }
 
   private loseHeart(message: string): void {
@@ -763,7 +941,7 @@ export class GameScene extends Phaser.Scene {
       hitObstacle.actionStarted = false;
       respawnX = hitObstacle.x - 92;
     }
-    const fallenGap = GAP_ZONES.findIndex(g => this.player.x > g.left - 20 && this.player.x < g.right + 20);
+    const fallenGap = this.gapZones.findIndex(g => this.player.x > g.left - 20 && this.player.x < g.right + 20);
     if (fallenGap >= 0) {
       this.gapPrompted[fallenGap] = true;
       this.gapActionStarted[fallenGap] = false;
