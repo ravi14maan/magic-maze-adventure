@@ -57,8 +57,22 @@ npm run typecheck
 npm run build
 ```
 
-The current prototype includes one sample maze, selection among the three starting characters, keyboard movement (arrow keys or W/A/S/D), touch movement buttons, and restart. Profiles, save data, coin rewards, actual character unlock transactions, the ten worlds and the 50-level campaign remain planned milestones.
+The current playable demo includes one sample maze, selection among the three starting characters, keyboard movement (arrow keys or W/A/S/D), touch movement buttons, and restart. Profiles, save data, coin rewards, actual character unlock transactions, the ten worlds and the 50-level campaign remain planned milestones.
+
+## Android demo APK
+
+The Android wrapper uses Capacitor 8. The GitHub Actions workflow builds an installable **debug APK** whenever code is pushed to `main`, and can also be run manually from the Actions tab.
+
+1. Open the repository's **Actions** tab.
+2. Select **Android Debug APK** and open the latest successful run.
+3. Under **Artifacts**, download `magic-maze-adventure-debug-apk`.
+4. Extract the ZIP and copy `app-debug.apk` to the Android phone.
+5. Open the APK on the phone and allow installation from that source when Android asks. Only install builds you trust.
+
+This is a development/test build, not a Play Store release. It is unsigned with a production release key and has not completed full device QA.
 
 ## Current status
 
-Planning and documentation baseline. The playable prototype and production implementation are not yet complete.
+**v0.1 prototype:** one playable sample maze, three selectable starting characters and an Android debug build pipeline.
+
+**Still under development:** independent profiles, cartoon avatar creator, coin earning and character unlock transactions, all ten themed worlds, 50 levels, the remaining challenge mechanics, rewards, save/recovery and release hardening.
