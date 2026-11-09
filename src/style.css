@@ -73,3 +73,22 @@ input:focus{border-color:#b48cce;box-shadow:0 0 0 3px #eadcf4}
 .pause-card p{font-size:12px;color:#92829b;margin:0 0 12px}
 .pause-emoji{font-size:44px}
 .pause-card .wide-button{margin-top:9px}
+
+.settings-feature .feature-icon{background:#fff2d9}
+.wardrobe-panel,.settings-panel{margin-top:18px;padding:20px;border:1px solid var(--line);border-radius:23px;background:#fff;box-shadow:0 7px 22px #795a7c0a}
+.wardrobe-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:13px}
+.wardrobe-heading h2{font-family:"Trebuchet MS",sans-serif;font-size:21px;color:#684d83;margin:0}
+.wardrobe-preview{display:grid;place-items:center;min-width:92px;min-height:56px;border-radius:16px;background:#f8efff;font-size:26px;padding:7px}
+.wardrobe-panel h3{font-size:11px;color:#80648f;margin:15px 0 8px}
+.settings-panel{max-width:720px;margin:0 auto;padding:4px 20px}
+.setting-row{display:flex;align-items:center;gap:13px;padding:16px 0;border-bottom:1px solid #f1e7f1}
+.setting-row:last-child{border-bottom:0}
+.setting-icon{width:43px;height:43px;display:grid;place-items:center;border-radius:14px;background:#f6edfc;font-size:22px;flex:none}
+.setting-row>div:nth-child(2){display:grid;gap:3px;flex:1}
+.setting-row strong{font-size:13px;color:#654b80}
+.setting-row small{font-size:10px;color:#97889e;line-height:1.35}
+.toggle-button{min-width:58px;border:1px solid #e7dce9;border-radius:30px;background:#f5f0f6;color:#8a7b91;padding:8px 11px;font-size:10px;font-weight:900}
+.toggle-button.enabled{background:#e4f6e9;border-color:#c9ead4;color:#397c51}
+.dpad button{position:relative;z-index:5;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.play-controls{position:relative;z-index:10;pointer-events:auto}
+.play-controls button{pointer-events:auto}
