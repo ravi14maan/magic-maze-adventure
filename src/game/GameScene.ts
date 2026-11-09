@@ -103,6 +103,10 @@ export class GameScene extends Phaser.Scene {
   toggleAutoWalk(): boolean {
     if (this.complete || this.challengeOpen || !this.player) return false;
     this.autoWalkEnabled = !this.autoWalkEnabled;
+    if (this.autoWalkEnabled) {
+      this.facing = 1;
+      this.player.setScale(1, this.player.scaleY);
+    }
     this.publish(this.autoWalkEnabled ? "▶️ Your character is walking! Tap ▲ to jump and tap ▶ again to stop." : "⏸️ Walking paused.");
     return this.autoWalkEnabled;
   }
@@ -197,7 +201,8 @@ export class GameScene extends Phaser.Scene {
         const ducking = this.time.now < this.duckUntil;
         const safe = obstacle.kind === "branch" ? ducking : airborne;
         if (!safe) {
-          obstacle.handled = true;
+          // Keep the obstacle active after a checkpoint reset so the player
+          // must actually clear it on the next attempt.
           const text: Record<ObstacleKind, string> = {
             log: "🪵 Jump over the fallen log next time!",
             rock: "🪨 Time your jump to clear the rolling rock!",
