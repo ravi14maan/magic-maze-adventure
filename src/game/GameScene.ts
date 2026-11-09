@@ -144,7 +144,7 @@ export class GameScene extends Phaser.Scene {
           pendingObstacle.actionStarted = true;
           this.autoWalkEnabled = true;
         }
-        const pendingGap = GAP_ZONES.findIndex((g, i) => this.gapPrompted[i] && !this.gapActionStarted[i]);
+        const pendingGap = GAP_ZONES.findIndex((_gap, i) => this.gapPrompted[i] && !this.gapActionStarted[i]);
         if (pendingGap >= 0) {
           this.gapActionStarted[pendingGap] = true;
           this.autoWalkEnabled = true;
@@ -949,7 +949,7 @@ export class GameScene extends Phaser.Scene {
         if (moves >= moveLimit && pairs < pairCount) {
           window.setTimeout(() => {
             if (this.overlayElement?.isConnected) {
-              this.showChallengeFailed(panel, "Move limit reached. Try to remember the shells in fewer moves!", () => this.startMemoryChallenge());
+              this.showChallengeFailed("Move limit reached. Try to remember the shells in fewer moves!", () => this.startMemoryChallenge());
             }
           }, 760);
         }
@@ -1067,7 +1067,7 @@ export class GameScene extends Phaser.Scene {
     hint.textContent = message;
   }
 
-  private showChallengeFailed(panel: HTMLElement, message: string, retry: () => void): void {
+  private showChallengeFailed(message: string, retry: () => void): void {
     const failed = this.createPanel("Almost there!", message, "🧩");
     this.addChallengeText(failed, "Your adventure is paused here. You do not lose your progress.");
     this.addPanelButton(failed, "TRY AGAIN", retry, "primary");
