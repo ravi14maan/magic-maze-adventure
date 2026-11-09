@@ -220,7 +220,7 @@ function renderSettings(): void {
       ${subHeader("Sound & Settings", "Choose how Magic Maze Adventure sounds and feels.", "dashboard")}
       <section class="settings-panel">
         <div class="setting-row"><div class="setting-icon">🔔</div><div><strong>Sound effects</strong><small>Movement, treasure, traps and level-complete sounds</small></div><button class="toggle-button ${p.soundEnabled !== false ? "enabled" : ""}" data-action="settings-sound">${p.soundEnabled !== false ? "ON" : "OFF"}</button></div>
-        <div class="setting-row"><div class="setting-icon">🎵</div><div><strong>Background music</strong><small>Soft original ambient melody during play</small></div><button class="toggle-button ${p.musicEnabled === true ? "enabled" : ""}" data-action="settings-music">${p.musicEnabled === true ? "ON" : "OFF"}</button></div>
+        <div class="setting-row"><div class="setting-icon">🎵</div><div><strong>Background music</strong><small>Original storybook melody with harmony and bass</small></div><button class="toggle-button ${p.musicEnabled === true ? "enabled" : ""}" data-action="settings-music">${p.musicEnabled === true ? "ON" : "OFF"}</button></div>
         <div class="setting-row"><div class="setting-icon">🎮</div><div><strong>Movement controls</strong><small>Use the on-screen arrows or keyboard arrow keys / W A S D.</small></div></div>
         <div class="setting-row"><div class="setting-icon">💾</div><div><strong>Save progress</strong><small>Profile progress, rewards and unlocked heroes are saved on this device.</small></div></div>
       </section>
@@ -326,6 +326,7 @@ function renderPlay(): void {
         if (!currentScene) notify("The adventure is still loading. Please tap again.");
         return;
       }
+      gameAudio.unlock();
       gameAudio.play("move");
       currentScene.move(delta[0], delta[1]);
       // Holding the forward/back buttons walks continuously; jump and duck remain taps.
@@ -415,6 +416,7 @@ function startLevel(level: number): void {
 }
 
 app.addEventListener("click", (event) => {
+  gameAudio.unlock();
   const target = event.target as HTMLElement;
   const button = target.closest<HTMLElement>("[data-action]");
   if (!button) return;
@@ -497,6 +499,7 @@ app.addEventListener("click", (event) => {
 });
 
 app.addEventListener("submit",(event)=>{
+  gameAudio.unlock();
   const form=event.target as HTMLFormElement;
   if(!(form instanceof HTMLFormElement))return;
   event.preventDefault();
