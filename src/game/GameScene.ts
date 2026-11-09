@@ -416,19 +416,20 @@ export class GameScene extends Phaser.Scene {
     head.fillCircle(0, -76, 18);
     head.lineStyle(1.5, 0xd99a86, 1);
     head.strokeCircle(0, -76, 18);
-    // Expressive face: eyebrows, bright eyes, cheeks and a clear smile.
-    head.lineStyle(1.6, 0x583c43, 1);
-    head.beginPath(); head.moveTo(-10, -83); head.lineTo(-5, -84); head.strokePath();
-    head.beginPath(); head.moveTo(5, -84); head.lineTo(10, -83); head.strokePath();
-    head.fillStyle(0x49313e, 1);
-    head.fillEllipse(-6, -77, 3.5, 5.5);
-    head.fillEllipse(6, -77, 3.5, 5.5);
-    head.fillStyle(0xffffff, 1);
-    head.fillCircle(-6.7, -78, 1.1); head.fillCircle(5.3, -78, 1.1);
-    head.fillStyle(0xf18b9d, 0.35);
-    head.fillEllipse(-11, -69, 5, 3); head.fillEllipse(11, -69, 5, 3);
-    head.lineStyle(1.7, 0x9b536a, 1);
-    head.beginPath(); head.arc(0, -70, 4.5, 0.2, Math.PI - 0.2, false); head.strokePath();
+    // Draw the facial details after the fringe so the eyes and smile stay visible.
+    const faceDetails = this.add.graphics();
+    faceDetails.lineStyle(1.6, 0x583c43, 1);
+    faceDetails.beginPath(); faceDetails.moveTo(-10, -83); faceDetails.lineTo(-5, -84); faceDetails.strokePath();
+    faceDetails.beginPath(); faceDetails.moveTo(5, -84); faceDetails.lineTo(10, -83); faceDetails.strokePath();
+    faceDetails.fillStyle(0x49313e, 1);
+    faceDetails.fillEllipse(-6, -77, 3.5, 5.5);
+    faceDetails.fillEllipse(6, -77, 3.5, 5.5);
+    faceDetails.fillStyle(0xffffff, 1);
+    faceDetails.fillCircle(-6.7, -78, 1.1); faceDetails.fillCircle(5.3, -78, 1.1);
+    faceDetails.fillStyle(0xf18b9d, 0.35);
+    faceDetails.fillEllipse(-11, -69, 5, 3); faceDetails.fillEllipse(11, -69, 5, 3);
+    faceDetails.lineStyle(1.7, 0x9b536a, 1);
+    faceDetails.beginPath(); faceDetails.arc(0, -70, 4.5, 0.2, Math.PI - 0.2, false); faceDetails.strokePath();
 
     const frontHair = this.add.graphics();
     frontHair.fillStyle(0x533548, 1);
@@ -446,7 +447,7 @@ export class GameScene extends Phaser.Scene {
       fontFamily: "system-ui", fontSize: "13px"
     }).setOrigin(0.5);
 
-    const playerChildren = [shadow, backHair, leftLeg, rightLeg, leftArm, rightArm, clothes, head, frontHair, hairPin, accessory];
+    const playerChildren = [shadow, backHair, leftLeg, rightLeg, leftArm, rightArm, clothes, head, frontHair, faceDetails, hairPin, accessory];
     this.player = this.add.container(120, this.groundY, playerChildren).setDepth(20);
   }
 
