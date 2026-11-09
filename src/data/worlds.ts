@@ -26,8 +26,43 @@ export const WORLDS: readonly WorldDefinition[] = [
 
 export const CHALLENGES: readonly ChallengeType[] = ["classic", "monster", "obstacle", "key-door", "tricky"];
 
-export function challengeForLevel(levelNumber: number): ChallengeType {
-  return CHALLENGES[(levelNumber - 1) % CHALLENGES.length] ?? "classic";
+export interface DifficultyProfile {
+  rank: number;
+  label: string;
+  shortLabel: string;
+  hazardCount: number;
+  obstacleSpeed: number;
+  memoryPairs: number;
+  challengeSeconds: number;
+}
+
+const DIFFICULTY_NAMES = [
+  "Easy", "Medium", "Hard", "Very Hard", "Extreme",
+  "Nightmare", "Master", "Legendary", "Mythic", "Ultimate"
+] as const;
+
+/**
+ * Difficulty climbs level by level across the full ten-world adventure.
+ * The first five levels are Easy → Medium → Hard → Very Hard → Extreme;
+ * each new world continues the climb instead of resetting it.
+ */
+export function difficultyForLevel(levelNumber: number, worldIndex = 0): DifficultyProfile {
+  const rank = Math.min(DIFFICULTY_NAMES.length - 1, Math.max(0, worldIndex + levelNumber - 1));
+  return {
+    rank,
+    label: DIFFICULTY_NAMES[rank]!,
+    shortLabel: DIFFICULTY_NAMES[rank]!,
+    hazardCount: 4 + rank,
+    obstacleSpeed: 1 + rank * 0.09,
+    memoryPairs: Math.min(8, 4 + Math.floor(rank * 0.55)),
+    challengeSeconds: Math.max(34, 82 - rank * 5)
+  };
+}
+
+export function challengeForLevel(levelNumber: number, worldIndex = 0): ChallengeType {
+  // Offset each new world so the same mini-game does not always appear on
+  // the same numbered level.
+  return CHALLENGES[(worldIndex + levelNumber - 1) % CHALLENGES.length] ?? "classic";
 }
 
 export function challengeLabel(challenge: ChallengeType): string {
