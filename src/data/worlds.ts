@@ -27,6 +27,7 @@ export const WORLDS: readonly WorldDefinition[] = [
 export const CHALLENGES: readonly ChallengeType[] = ["classic", "monster", "obstacle", "key-door", "tricky"];
 
 export interface DifficultyProfile {
+  progressIndex: number;
   rank: number;
   label: string;
   shortLabel: string;
@@ -47,15 +48,18 @@ const DIFFICULTY_NAMES = [
  * each new world continues the climb instead of resetting it.
  */
 export function difficultyForLevel(levelNumber: number, worldIndex = 0): DifficultyProfile {
-  const rank = Math.min(DIFFICULTY_NAMES.length - 1, Math.max(0, worldIndex + levelNumber - 1));
+  const progressIndex = Math.max(0, worldIndex * 5 + levelNumber - 1);
+  const rank = Math.min(DIFFICULTY_NAMES.length - 1, progressIndex);
+  const label = progressIndex <= 9 ? DIFFICULTY_NAMES[rank]! : "Ult+" + String(progressIndex - 9);
   return {
+    progressIndex,
     rank,
-    label: DIFFICULTY_NAMES[rank]!,
-    shortLabel: DIFFICULTY_NAMES[rank]!,
-    hazardCount: 4 + rank,
-    obstacleSpeed: 1 + rank * 0.09,
-    memoryPairs: Math.min(8, 4 + Math.floor(rank * 0.55)),
-    challengeSeconds: Math.max(34, 82 - rank * 5)
+    label,
+    shortLabel: label,
+    hazardCount: Math.min(17, 4 + Math.floor(progressIndex / 4)),
+    obstacleSpeed: 1 + progressIndex * 0.025,
+    memoryPairs: Math.min(8, 4 + Math.floor(progressIndex / 6)),
+    challengeSeconds: Math.max(28, Math.round(82 - progressIndex * 1.12))
   };
 }
 
