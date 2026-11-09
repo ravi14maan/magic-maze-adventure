@@ -272,3 +272,13 @@ input:focus{border-color:#b48cce;box-shadow:0 0 0 3px #eadcf4}
   .play-title{min-width:70px}
   .level-card .difficulty-chip{font-size:7px}
 }
+
+
+.challenge-countdown{
+  margin:2px 0 7px!important;
+  padding:7px 11px;border-radius:999px;
+  background:#fff0cf;color:#9a5c17!important;
+  border:1px solid #f0d08e;
+  font-weight:1000;text-align:center;
+}
+.adventure-challenge-card .challenge-countdown{font-size:12px}
