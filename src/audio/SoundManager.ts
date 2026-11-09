@@ -4,30 +4,39 @@ class SoundManager {
   private context: AudioContext | null = null;
   private soundEnabled = true;
   private musicEnabled = false;
-  private musicOscillator: OscillatorNode | null = null;
-  private musicGain: GainNode | null = null;
   private musicTimer: number | null = null;
   private noteIndex = 0;
 
   configure(soundEnabled: boolean, musicEnabled: boolean): void {
     this.soundEnabled = soundEnabled;
-    this.musicEnabled = musicEnabled;
-    if (musicEnabled) this.startMusic();
-    else this.stopMusic();
+    if (musicEnabled && !this.musicEnabled) {
+      this.musicEnabled = true;
+      this.startMusic();
+    } else if (!musicEnabled && this.musicEnabled) {
+      this.musicEnabled = false;
+      this.stopMusic();
+    } else {
+      this.musicEnabled = musicEnabled;
+    }
   }
 
   play(kind: SoundKind): void {
     if (!this.soundEnabled) return;
     const patterns: Record<SoundKind, number[]> = {
-      move: [440],
-      click: [523],
-      collect: [660, 880],
-      hurt: [190, 150],
-      success: [523, 659, 784]
+      move: [392],
+      click: [587],
+      collect: [659, 784, 988],
+      hurt: [220, 174],
+      success: [523, 659, 784, 1047]
     };
     const notes = patterns[kind];
     notes.forEach((frequency, index) => {
-      window.setTimeout(() => this.tone(frequency, kind === "hurt" ? 0.12 : 0.09, kind === "hurt" ? "triangle" : "sine", 0.055), index * 75);
+      window.setTimeout(() => this.tone(
+        frequency,
+        kind === "success" ? 0.17 : kind === "hurt" ? 0.14 : 0.11,
+        kind === "hurt" ? "triangle" : "sine",
+        kind === "move" ? 0.035 : 0.065
+      ), index * 85);
     });
   }
 
@@ -49,36 +58,55 @@ class SoundManager {
     const oscillator = context.createOscillator();
     const gain = context.createGain();
     oscillator.type = wave;
-    oscillator.frequency.value = frequency;
+    oscillator.frequency.setValueAtTime(frequency, context.currentTime);
     gain.gain.setValueAtTime(0.0001, context.currentTime);
-    gain.gain.exponentialRampToValueAtTime(volume, context.currentTime + 0.012);
+    gain.gain.exponentialRampToValueAtTime(volume, context.currentTime + 0.025);
     gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + duration);
     oscillator.connect(gain);
     gain.connect(context.destination);
     oscillator.start();
-    oscillator.stop(context.currentTime + duration + 0.02);
+    oscillator.stop(context.currentTime + duration + 0.025);
+    oscillator.onended = () => {
+      oscillator.disconnect();
+      gain.disconnect();
+    };
   }
 
   private startMusic(): void {
-    if (this.musicOscillator || !this.musicEnabled) return;
+    if (this.musicTimer !== null || !this.musicEnabled) return;
     const context = this.getContext();
     if (!context) return;
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = "sine";
-    oscillator.frequency.value = 261.63;
-    gain.gain.value = 0.012;
-    oscillator.connect(gain);
-    gain.connect(context.destination);
-    oscillator.start();
-    this.musicOscillator = oscillator;
-    this.musicGain = gain;
-    const notes = [261.63, 329.63, 392, 329.63, 293.66, 349.23, 440, 349.23];
-    this.musicTimer = window.setInterval(() => {
-      if (!this.musicOscillator || !this.musicEnabled) return;
-      this.noteIndex = (this.noteIndex + 1) % notes.length;
-      this.musicOscillator.frequency.setTargetAtTime(notes[this.noteIndex]!, context.currentTime, 0.18);
-    }, 780);
+    // A gentle, clearly audible storybook tune in C major / A minor.
+    // Melody, soft harmony and bass notes are synthesized locally; no network audio.
+    const melody = [
+      523.25, 659.25, 783.99, 659.25,
+      587.33, 698.46, 880.00, 698.46,
+      523.25, 659.25, 783.99, 1046.5,
+      783.99, 698.46, 659.25, 523.25
+    ];
+    const harmony = [
+      392.00, 440.00, 392.00, 349.23,
+      329.63, 392.00, 349.23, 293.66
+    ];
+    const bass = [130.81, 110.00, 87.31, 98.00];
+
+    const playBeat = (): void => {
+      if (!this.musicEnabled) return;
+      const step = this.noteIndex % melody.length;
+      this.tone(melody[step]!, 0.34, "triangle", 0.105);
+      if (step % 2 === 0) {
+        this.tone(harmony[(step / 2) % harmony.length]!, 0.62, "sine", 0.038);
+      }
+      if (step % 4 === 0) {
+        this.tone(bass[Math.floor(step / 4) % bass.length]!, 0.82, "sine", 0.055);
+      }
+      this.noteIndex = (step + 1) % melody.length;
+    };
+
+    playBeat();
+    this.musicTimer = window.setInterval(playBeat, 430);
+    // Ensure the audio context is resumed after the settings button gesture.
+    if (context.state === "suspended") void context.resume().catch(() => undefined);
   }
 
   private stopMusic(): void {
@@ -86,16 +114,6 @@ class SoundManager {
       window.clearInterval(this.musicTimer);
       this.musicTimer = null;
     }
-    if (this.musicGain && this.context) {
-      this.musicGain.gain.setTargetAtTime(0.0001, this.context.currentTime, 0.08);
-    }
-    if (this.musicOscillator) {
-      try { this.musicOscillator.stop(this.context?.currentTime ?? 0); } catch { /* already stopped */ }
-      this.musicOscillator.disconnect();
-      this.musicOscillator = null;
-    }
-    this.musicGain?.disconnect();
-    this.musicGain = null;
   }
 }
 
