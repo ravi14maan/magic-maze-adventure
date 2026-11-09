@@ -964,7 +964,7 @@ export class GameScene extends Phaser.Scene {
       timeLeft--;
       refreshStatus();
       if (timeLeft <= 0) {
-        this.showChallengeFailed(panel, "Time is up! Take a breath and try the memory challenge again.", () => this.startMemoryChallenge());
+        this.showChallengeFailed("Time is up! Take a breath and try the memory challenge again.", () => this.startMemoryChallenge());
       }
     }, 1000);
   }
