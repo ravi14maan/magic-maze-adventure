@@ -143,7 +143,16 @@ export class GameScene extends Phaser.Scene {
     }
     this.px=x;this.py=y;
     if(redraw)this.drawBoard();
-    else this.player.setPosition(this.cellX(x),this.cellY(y));
+    else {
+      this.tweens.killTweensOf(this.player);
+      this.tweens.add({
+        targets:this.player,
+        x:this.cellX(x),
+        y:this.cellY(y),
+        duration:105,
+        ease:"Sine.easeOut"
+      });
+    }
     if(x===EXIT.x&&y===EXIT.y){
       if((this.session.challenge==="key-door"||this.session.challenge==="tricky")&&!this.hasKey){this.publish("The portal needs the golden key. Search the maze!");return;}
       this.complete=true;
@@ -234,6 +243,7 @@ export class GameScene extends Phaser.Scene {
       this.specialSprites.set(key,sprite);
       if(item==="monster")this.tweens.add({targets:sprite,y:sprite.y-2,duration:500,yoyo:true,repeat:-1});
       if(item==="coin"||item==="gem")this.tweens.add({targets:sprite,angle:12,duration:750,yoyo:true,repeat:-1});
+      if(item==="trap")this.tweens.add({targets:sprite,alpha:.48,scale:.84,duration:430,yoyo:true,repeat:-1});
     }
     const portal=this.add.text(this.cellX(EXIT.x),this.cellY(EXIT.y),"🌀",{fontFamily:"system-ui",fontSize:`${Math.max(13,this.tile*.88)}px`}).setOrigin(.5);
     this.tweens.add({targets:portal,scale:1.15,duration:700,yoyo:true,repeat:-1});
