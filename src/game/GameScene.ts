@@ -11,7 +11,7 @@ export interface MazeSession {
 }
 export interface MazeProgress { hearts: number; coins: number; gems: number; hasKey: boolean; message: string }
 export interface MazeReward { coins: number; gems: number; stars: number; challenge: ChallengeType }
-type TileItem = "coin" | "gem" | "key" | "door" | "trap" | "monster" | "chest";
+type TileItem = "coin" | "gem" | "key" | "door" | "trap" | "monster" | "chest" | "switch" | "hidden";
 
 const COLS = 15, ROWS = 23;
 const START = { x: 1, y: 1 };
@@ -74,7 +74,7 @@ export class GameScene extends Phaser.Scene {
   private player!:Phaser.GameObjects.Text;
   private px=1; private py=1; private tile=20; private left=0; private top=0;
   private hearts=5; private coins=0; private gems=0; private hasKey=false;
-  private invulnerableUntil=0; private complete=false;
+  private invulnerableUntil=0; private complete=false; private hiddenOpen=false;
 
   constructor(session:MazeSession,onProgress:(p:MazeProgress)=>void,onComplete:(r:MazeReward)=>void) {
     super("MazeScene"); this.session=session; this.onProgress=onProgress; this.onComplete=onComplete;
@@ -95,20 +95,29 @@ export class GameScene extends Phaser.Scene {
   move(dx:number,dy:number):void {
     if(this.complete || !this.player)return;
     let x=this.px+dx,y=this.py+dy;
-    if(this.grid[y]?.[x]!==0)return;
+    const targetCell=this.grid[y]?.[x];
+    if(targetCell!==0 && !(targetCell===2 && this.hiddenOpen)){
+      this.publish(targetCell===2?"🔮 The secret path is still hidden. Find its switch!":"🧱 A wall blocks this way. Try another turn.");
+      return;
+    }
     const key=keyOf(x,y),item=this.specials.get(key);
     let message="Keep exploring!";
+    let redraw=false;
     if(item==="door"&&!this.hasKey){this.publish("🔒 Find the golden key to open this door!");return;}
     if(item==="key"){this.hasKey=true;this.removeItem(key);message="🗝️ Golden key found! The magic door will open.";}
     else if(item==="coin"){this.coins++;this.removeItem(key);message="🪙 Coin collected!";}
     else if(item==="gem"){this.gems++;this.removeItem(key);message="💎 Sparkling gem collected!";}
     else if(item==="chest"){this.coins+=8;this.gems++;this.removeItem(key);message="🎁 Treasure chest! +8 coins and +1 gem!";}
+    else if(item==="switch"){this.hiddenOpen=true;this.removeItem(key);message="✨ Switch activated! A secret passage has appeared.";redraw=true;}
+    else if(item==="hidden"){this.removeItem(key);message="🌟 You discovered a hidden shortcut!";}
     else if((item==="trap"||item==="monster")&&Date.now()>this.invulnerableUntil){
       this.hearts--;this.invulnerableUntil=Date.now()+950;this.removeItem(key);
       message=item==="trap"?"⚡ Magic trap! One heart lost.":"👾 Monster bump! One heart lost.";
       if(this.hearts<=0){this.hearts=5;x=START.x;y=START.y;message="🧚 A fairy brought you safely back to the start. Keep going!";}
     }
-    this.px=x;this.py=y;this.player.setPosition(this.cellX(x),this.cellY(y));
+    this.px=x;this.py=y;
+    if(redraw)this.drawBoard();
+    else this.player.setPosition(this.cellX(x),this.cellY(y));
     if(x===EXIT.x&&y===EXIT.y){
       if((this.session.challenge==="key-door"||this.session.challenge==="tricky")&&!this.hasKey){this.publish("The portal needs the golden key. Search the maze!");return;}
       this.complete=true;
@@ -132,6 +141,26 @@ export class GameScene extends Phaser.Scene {
     if(this.session.challenge==="key-door"||this.session.challenge==="tricky"){
       const k=path[Math.floor(path.length*.29)]!,d=path[Math.floor(path.length*.72)]!;
       put(k.x,k.y,"key");put(d.x,d.y,"door");
+    }
+    if(this.session.challenge==="tricky"){
+      const switchStart=Math.floor(path.length*.48);
+      for(let offset=0;offset<path.length/3;offset++){
+        const candidate=path[Math.min(path.length-2,switchStart+offset)]!;
+        if(!reserved.has(keyOf(candidate.x,candidate.y))){put(candidate.x,candidate.y,"switch");break;}
+      }
+      const hiddenCandidates:Array<{x:number;y:number}>=[];
+      for(let y=1;y<ROWS-1;y++)for(let x=1;x<COLS-1;x++){
+        if(this.grid[y]![x]!==1)continue;
+        const horizontal=this.grid[y]![x-1]===0&&this.grid[y]![x+1]===0;
+        const vertical=this.grid[y-1]![x]===0&&this.grid[y+1]![x]===0;
+        if(horizontal||vertical)hiddenCandidates.push({x,y});
+      }
+      if(hiddenCandidates.length){
+        const hidden=hiddenCandidates[Math.floor(random()*hiddenCandidates.length)]!;
+        this.grid[hidden.y]![hidden.x]=2;
+        this.specials.set(keyOf(hidden.x,hidden.y),"hidden");
+        reserved.add(keyOf(hidden.x,hidden.y));
+      }
     }
     for(let i=10;i<path.length-6;i+=9){const p=path[i]!;put(p.x,p.y,"coin");}
     const cells:Array<{x:number;y:number}>=[];
@@ -164,15 +193,16 @@ export class GameScene extends Phaser.Scene {
     this.left=(w-COLS*this.tile)/2;this.top=(h-ROWS*this.tile)/2;
     for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
       const cx=this.cellX(x),cy=this.cellY(y);
-      if(this.grid[y]?.[x]!==0){
+      if(this.grid[y]?.[x]!==0 && !(this.grid[y]?.[x]===2 && this.hiddenOpen)){
         this.add.rectangle(cx,cy,this.tile-1,this.tile-1,this.session.world.wall).setStrokeStyle(1,this.session.world.accent,.65);
         this.add.circle(cx,cy,Math.max(1,this.tile*.055),this.session.world.accent,.3);
       }else{
         this.add.rectangle(cx,cy,this.tile-1,this.tile-1,this.session.world.floor).setStrokeStyle(1,this.session.world.accent,.28);
       }
     }
-    const icons:Record<TileItem,string>={coin:"🪙",gem:"💎",key:"🗝️",door:"🚪",trap:"⚡",monster:"👾",chest:"🎁"};
+    const icons:Record<TileItem,string>={coin:"🪙",gem:"💎",key:"🗝️",door:"🚪",trap:"⚡",monster:"👾",chest:"🎁",switch:"🔘",hidden:"🌟"};
     for(const [key,item] of this.specials){
+      if(item==="hidden"&&!this.hiddenOpen)continue;
       const [x,y]=key.split(",").map(Number);
       const sprite=this.add.text(this.cellX(x!),this.cellY(y!),icons[item],{fontFamily:"system-ui",fontSize:`${Math.max(11,this.tile*.72)}px`}).setOrigin(.5);
       this.specialSprites.set(key,sprite);
