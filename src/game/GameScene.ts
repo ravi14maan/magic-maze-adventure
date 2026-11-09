@@ -197,7 +197,7 @@ export class GameScene extends Phaser.Scene {
     const sky = this.session.world.sky;
     const floor = this.session.world.floor;
     const accent = this.session.world.accent;
-    this.add.rectangle(WORLD_LENGTH / 2, height / 2, WORLD_LENGTH, height, sky);
+    this.add.rectangle(WORLD_LENGTH / 2, height / 2, WORLD_LENGTH, height, Number.parseInt(sky.replace("#", ""), 16));
     for (let i = 0; i < 13; i++) {
       const x = 100 + i * 255;
       this.add.ellipse(x, this.groundY - 54 - (i % 3) * 15, 340, 150, accent, 0.16);
@@ -274,7 +274,7 @@ export class GameScene extends Phaser.Scene {
     body.fillEllipse(-19, -38, 12, 22);
     body.fillEllipse(19, -38, 12, 22);
     const legs = this.add.graphics();
-    legs.lineStyle(6, 0x59435f, 1, 1, true);
+    legs.lineStyle(6, 0x59435f, 1);
     legs.beginPath(); legs.moveTo(-7, -16); legs.lineTo(-10, 0); legs.strokePath();
     legs.beginPath(); legs.moveTo(7, -16); legs.lineTo(10, 0); legs.strokePath();
     legs.fillStyle(0x70517d, 1);
