@@ -31,6 +31,11 @@ export const CHARACTERS: readonly CharacterDefinition[] = [
   { id: "mermaid", name: "Mermaid", token: "🧜‍♀️", colour: 0x60c9c4, coinCost: 135, initiallyUnlocked: false, description: "A sea star who loves adventure" }
 ] as const;
 
+// These six heroes currently have character art supplied by Ahana. More can be added later.
+export const ART_READY_CHARACTER_IDS: readonly CharacterId[] = [
+  "normal-girl", "normal-boy", "unicorn", "witch", "princess", "mermaid"
+];
+
 export const STARTING_CHARACTER_IDS: readonly CharacterId[] = [
   "normal-girl",
   "normal-boy",
