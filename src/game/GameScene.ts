@@ -46,7 +46,9 @@ export class GameScene extends Phaser.Scene {
   private challengeOpen = false;
   private challengeCleared = false;
   private complete = false;
-  private overlay?: Phaser.GameObjects.Container;
+  private overlayElement?: HTMLDivElement;
+  private autoWalkEnabled = false;
+  private walkCycle = 0;
   private obstacles: Obstacle[] = [];
   private pickups: Pickup[] = [];
   private swipeStartX = 0;
@@ -66,6 +68,7 @@ export class GameScene extends Phaser.Scene {
     const height = this.scale.height;
     this.groundY = Math.floor(height * 0.77);
     this.lastGroundedAt = this.time.now;
+    this.autoWalkEnabled = false;
     this.cameras.main.setBackgroundColor(this.session.world.sky);
     this.drawWorld(width, height);
     this.drawHero();
@@ -91,8 +94,17 @@ export class GameScene extends Phaser.Scene {
       this.input.keyboard?.off("keydown", this.handleKey, this);
       this.input.off("pointerdown");
       this.input.off("pointerup");
+      this.overlayElement?.remove();
+      this.overlayElement = undefined;
     });
     this.publish("Your adventure begins! Tap ▶ to walk, ▲ to jump and ▼ to duck.");
+  }
+
+  toggleAutoWalk(): boolean {
+    if (this.complete || this.challengeOpen || !this.player) return false;
+    this.autoWalkEnabled = !this.autoWalkEnabled;
+    this.publish(this.autoWalkEnabled ? "▶️ Your character is walking! Tap ▲ to jump and tap ▶ again to stop." : "⏸️ Walking paused.");
+    return this.autoWalkEnabled;
   }
 
   move(dx: number, dy: number): void {
@@ -141,6 +153,8 @@ export class GameScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     if (!this.player || this.complete || this.challengeOpen) return;
     const dt = Math.min(delta, 40) / 1000;
+    if (this.autoWalkEnabled) this.advanceAutoWalk(dt);
+    if (this.challengeOpen || this.complete) return;
     const inGap = this.isOverGap(this.player.x);
     if (this.jumping || inGap) {
       this.jumpVelocity += 1420 * dt;
@@ -197,6 +211,17 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (!inGap && this.player.y >= this.groundY - 2) this.lastGroundedAt = this.time.now;
+    if (this.autoWalkEnabled && !this.jumping && !inGap && this.time.now > this.duckUntil) {
+      this.walkCycle += dt * 13;
+      this.leftLeg.angle = Math.sin(this.walkCycle) * 22;
+      this.rightLeg.angle = Math.sin(this.walkCycle + Math.PI) * 22;
+      this.leftArm.angle = Math.sin(this.walkCycle + Math.PI) * 17;
+      this.rightArm.angle = Math.sin(this.walkCycle) * 17;
+      this.player.y = this.groundY + Math.abs(Math.sin(this.walkCycle * 2)) * 2;
+    } else if (!this.autoWalkEnabled && !this.jumping && !inGap) {
+      this.leftLeg.angle = 0; this.rightLeg.angle = 0;
+      this.leftArm.angle = 0; this.rightArm.angle = 0;
+    }
     if (this.player.x >= 820 && this.checkpointX < 820) {
       this.checkpointX = 820;
       this.publish("🏕️ Checkpoint saved! You can keep exploring.");
@@ -456,6 +481,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private loseHeart(message: string): void {
+    this.autoWalkEnabled = false;
     this.hearts--;
     if (this.hearts <= 0) {
       this.hearts = 5;
@@ -472,42 +498,65 @@ export class GameScene extends Phaser.Scene {
   }
 
   private openChallengeStation(): void {
+    this.autoWalkEnabled = false;
     this.challengeOpen = true;
     this.publish("✨ Challenge station reached! Your journey is paused.");
-    const panel = this.createPanel("Magical Challenge Station", "Your adventure is paused right here. Complete a mini-game to open the path.");
-    this.addPanelButton(panel, "START CHALLENGE", () => this.startChallenge());
+    const panel = this.createPanel("Magical Challenge Station", "Your adventure is paused right here. Complete a mini-game to open the path.", "🐚");
+    this.addPanelButton(panel, "START CHALLENGE", () => this.startChallenge(), "primary");
   }
 
-  private createPanel(title: string, subtitle: string): Phaser.GameObjects.Container {
-    this.overlay?.destroy(true);
-    const width = this.scale.width;
-    const height = this.scale.height;
-    const panelWidth = Math.min(width - 28, 370);
-    const panelHeight = Math.min(height - 34, 430);
-    const container = this.add.container(0, 0).setScrollFactor(0).setDepth(1000);
-    container.add(this.add.rectangle(width / 2, height / 2, width, height, 0x302440, 0.72));
-    container.add(this.add.rectangle(width / 2, height / 2, panelWidth, panelHeight, 0xfffbff).setStrokeStyle(3, 0xe5c9f0));
-    container.add(this.add.text(width / 2, height / 2 - panelHeight / 2 + 28, title, {
-      fontFamily: "system-ui", fontSize: width < 380 ? "18px" : "21px", fontStyle: "bold", color: "#674c83",
-      align: "center", wordWrap: { width: panelWidth - 28 }
-    }).setOrigin(0.5));
-    container.add(this.add.text(width / 2, height / 2 - panelHeight / 2 + 78, subtitle, {
-      fontFamily: "system-ui", fontSize: "12px", color: "#806d8a", align: "center",
-      wordWrap: { width: panelWidth - 34 }
-    }).setOrigin(0.5));
-    this.overlay = container;
-    return container;
+  // Native DOM overlays are used instead of Phaser canvas hit areas. Android
+  // WebView reliably dispatches taps to real buttons, including inside cards.
+  private createPanel(title: string, subtitle: string, icon = "✨"): HTMLDivElement {
+    this.overlayElement?.remove();
+    const host = document.getElementById("maze-host") ?? document.body;
+    const overlay = document.createElement("div");
+    overlay.className = "adventure-overlay";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+
+    const card = document.createElement("section");
+    card.className = "adventure-challenge-card";
+    const badge = document.createElement("div");
+    badge.className = "adventure-challenge-icon";
+    badge.textContent = icon;
+    const heading = document.createElement("h2");
+    heading.textContent = title;
+    const description = document.createElement("p");
+    description.textContent = subtitle;
+    const content = document.createElement("div");
+    content.className = "adventure-challenge-content";
+    card.append(badge, heading, description, content);
+    overlay.append(card);
+    host.append(overlay);
+    this.overlayElement = overlay;
+    card.dataset.content = "challenge";
+    return card;
   }
 
-  private addPanelButton(panel: Phaser.GameObjects.Container, label: string, action: () => void, x?: number, y?: number, colour = 0x8b68ad): void {
-    const width = this.scale.width;
-    const height = this.scale.height;
-    const bx = x ?? width / 2;
-    const by = y ?? height / 2 + 145;
-    const button = this.add.rectangle(bx, by, Math.min(width - 72, 260), 48, colour).setInteractive({ useHandCursor: true });
-    const text = this.add.text(bx, by, label, { fontFamily: "system-ui", fontSize: "14px", fontStyle: "bold", color: "#ffffff" }).setOrigin(0.5);
-    button.on("pointerdown", action);
-    panel.add([button, text]);
+  private challengeContent(panel: HTMLDivElement): HTMLDivElement {
+    return panel.querySelector<HTMLDivElement>(".adventure-challenge-content")!;
+  }
+
+  private addPanelButton(panel: HTMLDivElement, label: string, action: () => void, variant = "primary"): void {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "adventure-challenge-button " + variant;
+    button.textContent = label;
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!button.disabled) action();
+    });
+    this.challengeContent(panel).append(button);
+  }
+
+  private addChallengeText(panel: HTMLDivElement, text: string, className = "challenge-instruction"): HTMLParagraphElement {
+    const paragraph = document.createElement("p");
+    paragraph.className = className;
+    paragraph.textContent = text;
+    this.challengeContent(panel).append(paragraph);
+    return paragraph;
   }
 
   private startChallenge(): void {
@@ -517,115 +566,154 @@ export class GameScene extends Phaser.Scene {
   }
 
   private startMemoryChallenge(): void {
-    const panel = this.createPanel("Ocean Memory", "Find all three matching pairs. Tap two cards at a time!");
+    const panel = this.createPanel("Ocean Memory", "Find all three matching sea-creature pairs.", "🫧");
+    this.addChallengeText(panel, "Tap two shells to reveal their pictures. Match all three pairs!");
     const symbols = ["🐬", "🐠", "🐙", "🐬", "🐠", "🐙"];
-    const cards: Array<{ value: string; text: Phaser.GameObjects.Text; button: Phaser.GameObjects.Rectangle; matched: boolean }> = [];
     const order = [2, 0, 4, 1, 5, 3];
+    const grid = document.createElement("div");
+    grid.className = "memory-card-grid";
+    this.challengeContent(panel).append(grid);
+    const cards: Array<{ value: string; button: HTMLButtonElement; matched: boolean }> = [];
     let first = -1;
     let locked = false;
     let pairs = 0;
-    const width = this.scale.width;
-    const height = this.scale.height;
-    const cardW = Math.min(82, (width - 66) / 3);
-    const cardH = 62;
-    const startX = width / 2 - cardW - 8;
-    const startY = height / 2 - 35;
+    let moves = 0;
+    const status = this.addChallengeText(panel, "Pairs: 0 / 3   •   Moves: 0", "challenge-status");
+
     order.forEach((symbolIndex, index) => {
-      const col = index % 3;
-      const row = Math.floor(index / 3);
-      const x = startX + col * (cardW + 8);
-      const y = startY + row * (cardH + 12);
-      const button = this.add.rectangle(x, y, cardW, cardH, 0xeadcf5).setStrokeStyle(2, 0xc8a9dc).setInteractive({ useHandCursor: true });
-      const text = this.add.text(x, y, "❔", { fontFamily: "system-ui", fontSize: "28px" }).setOrigin(0.5);
-      panel.add([button, text]);
-      const card = { value: symbols[symbolIndex]!, text, button, matched: false };
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "memory-card";
+      button.textContent = "🐚";
+      button.setAttribute("aria-label", "Hidden memory card");
+      const card = { value: symbols[symbolIndex]!, button, matched: false };
       cards.push(card);
-      button.on("pointerdown", () => {
-        if (locked || card.matched || text.text !== "❔") return;
-        text.setText(card.value);
-        if (first < 0) { first = index; return; }
+      grid.append(button);
+      button.addEventListener("click", () => {
+        if (locked || card.matched || button.dataset.revealed === "true" || !this.overlayElement?.isConnected) return;
+        button.dataset.revealed = "true";
+        button.textContent = card.value;
+        button.classList.add("revealed");
+        if (first < 0) {
+          first = index;
+          return;
+        }
         const firstIndex = first;
         first = -1;
+        moves++;
         const other = cards[firstIndex]!;
         if (other.value === card.value) {
-          other.matched = true; card.matched = true; pairs++;
+          other.matched = true;
+          card.matched = true;
+          other.button.classList.add("matched");
+          button.classList.add("matched");
+          pairs++;
+          status.textContent = "Pairs: " + pairs + " / 3   •   Moves: " + moves;
           if (pairs === 3) this.showChallengeWon();
         } else {
           locked = true;
-          this.time.delayedCall(750, () => {
-            if (!this.overlay || !this.overlay.active) return;
-            other.text.setText("❔"); card.text.setText("❔"); locked = false;
-          });
+          status.textContent = "Not a match yet. Try remembering the pictures!";
+          window.setTimeout(() => {
+            if (!this.overlayElement?.isConnected) return;
+            other.button.textContent = "🐚";
+            button.textContent = "🐚";
+            other.button.dataset.revealed = "false";
+            button.dataset.revealed = "false";
+            other.button.classList.remove("revealed");
+            button.classList.remove("revealed");
+            locked = false;
+          }, 850);
         }
       });
     });
   }
 
   private startPatternChallenge(): void {
-    const panel = this.createPanel("Gem Pattern", "Look at the pattern. Which gem comes next?");
-    const width = this.scale.width;
-    const height = this.scale.height;
-    panel.add(this.add.text(width / 2, height / 2 - 7, "💎   ⭐   💎   ⭐   ?", {
-      fontFamily: "system-ui", fontSize: "29px", color: "#674c83"
-    }).setOrigin(0.5));
-    const options: Array<[string, boolean]> = [["💎", true], ["⭐", false], ["🌙", false]];
-    options.forEach(([symbol, correct], index) => {
-      const x = width / 2 + (index - 1) * 88;
-      const button = this.add.rectangle(x, height / 2 + 75, 70, 62, 0xeadcf5).setStrokeStyle(2, 0xc8a9dc).setInteractive({ useHandCursor: true });
-      const text = this.add.text(x, height / 2 + 75, symbol, { fontFamily: "system-ui", fontSize: "30px" }).setOrigin(0.5);
-      button.on("pointerdown", () => {
+    const panel = this.createPanel("Gem Pattern", "Look carefully at the repeating pattern.", "💎");
+    this.addChallengeText(panel, "Which gem comes next?");
+    const pattern = document.createElement("div");
+    pattern.className = "pattern-display";
+    pattern.textContent = "💎   ⭐   💎   ⭐   ?";
+    this.challengeContent(panel).append(pattern);
+    const options = [["💎", true], ["⭐", false], ["🌙", false]] as const;
+    const choices = document.createElement("div");
+    choices.className = "challenge-choice-row";
+    this.challengeContent(panel).append(choices);
+    options.forEach(([symbol, correct]) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "challenge-choice";
+      button.textContent = symbol;
+      button.addEventListener("click", () => {
         if (correct) this.showChallengeWon();
-        else this.showRetryHint(panel, "Not quite! Look at the repeating pattern: gem, star, gem, star...");
+        else this.showRetryHint(panel, "Not quite! The pattern repeats: gem, star, gem, star...");
       });
-      panel.add([button, text]);
+      choices.append(button);
     });
   }
 
   private startKeyChallenge(): void {
-    const panel = this.createPanel("Choose the Magic Key", "The gate is blue. Which key will open it?");
-    const width = this.scale.width;
-    const height = this.scale.height;
-    panel.add(this.add.text(width / 2, height / 2 - 8, "🔵  🚪", { fontFamily: "system-ui", fontSize: "34px" }).setOrigin(0.5));
-    const options: Array<[string, boolean, number]> = [["Pink key 🗝️", false, 0xf0c5df], ["Blue key 🔑", true, 0xb9d9f5], ["Gold key 🗝️", false, 0xf2df9e]];
-    options.forEach(([label, correct, colour], index) => {
-      const y = height / 2 + 52 + index * 48;
-      const button = this.add.rectangle(width / 2, y, Math.min(width - 88, 255), 39, colour).setInteractive({ useHandCursor: true });
-      const text = this.add.text(width / 2, y, label, { fontFamily: "system-ui", fontSize: "13px", fontStyle: "bold", color: "#51445e" }).setOrigin(0.5);
-      button.on("pointerdown", () => {
+    const panel = this.createPanel("Choose the Magic Key", "Match the key to the gate to continue.", "🔑");
+    this.addChallengeText(panel, "The gate is blue. Which key will open it?");
+    const door = document.createElement("div");
+    door.className = "pattern-display";
+    door.textContent = "🔵  🚪";
+    this.challengeContent(panel).append(door);
+    const options = [
+      ["Pink key 🗝️", false, "pink"],
+      ["Blue key 🔑", true, "blue"],
+      ["Gold key 🗝️", false, "gold"]
+    ] as const;
+    const choices = document.createElement("div");
+    choices.className = "challenge-key-list";
+    this.challengeContent(panel).append(choices);
+    options.forEach(([label, correct, colour]) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "challenge-key " + colour;
+      button.textContent = label;
+      button.addEventListener("click", () => {
         if (correct) this.showChallengeWon();
         else this.showRetryHint(panel, "That key does not match the blue gate. Try another key!");
       });
-      panel.add([button, text]);
+      choices.append(button);
     });
   }
 
-  private showRetryHint(panel: Phaser.GameObjects.Container, message: string): void {
-    const width = this.scale.width;
-    const height = this.scale.height;
-    const hint = this.add.text(width / 2, height - 45, message, {
-      fontFamily: "system-ui", fontSize: "11px", color: "#a34d70", align: "center",
-      wordWrap: { width: width - 46 }
-    }).setOrigin(0.5);
-    panel.add(hint);
+  private showRetryHint(panel: HTMLDivElement, message: string): void {
+    let hint = panel.querySelector<HTMLParagraphElement>(".challenge-feedback");
+    if (!hint) {
+      hint = document.createElement("p");
+      hint.className = "challenge-feedback";
+      this.challengeContent(panel).append(hint);
+    }
+    hint.textContent = message;
   }
 
   private showChallengeWon(): void {
-    const panel = this.createPanel("Challenge complete! 🎉", "You earned +10 coins and +1 gem. The magical path is now open!");
-    this.addPanelButton(panel, "CONTINUE ADVENTURE", () => {
+    const panel = this.createPanel("Challenge complete!", "You earned +10 coins and +1 gem. The magical path is open!", "🏆");
+    this.addChallengeText(panel, "Amazing work, explorer! Your adventure is ready to continue.");
+    const reward = document.createElement("div");
+    reward.className = "challenge-rewards";
+    reward.textContent = "🪙 +10       💎 +1       ⭐ +1";
+    this.challengeContent(panel).append(reward);
+    this.addPanelButton(panel, "CONTINUE ADVENTURE ▶", () => {
       this.coins += 10;
       this.gems += 1;
       this.challengeCleared = true;
       this.challengeOpen = false;
-      this.overlay?.destroy(true);
-      this.overlay = undefined;
+      this.overlayElement?.remove();
+      this.overlayElement = undefined;
       this.player.x = STATION_X + 24;
-      this.publish("🌈 Challenge cleared! Your adventure continues from the same place.");
-    });
+      this.autoWalkEnabled = true;
+      this.publish("🌈 Challenge cleared! Your character is walking again.");
+    }, "primary");
   }
 
   private finishAdventure(): void {
     if (this.complete) return;
     this.complete = true;
+    this.autoWalkEnabled = false;
     const stars = this.hearts >= 4 ? 3 : this.hearts >= 2 ? 2 : 1;
     this.publish("🏆 Adventure complete! You reached the magical finish!");
     this.onComplete({
