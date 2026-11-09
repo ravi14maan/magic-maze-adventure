@@ -20,6 +20,18 @@ class SoundManager {
     }
   }
 
+  unlock(): void {
+    const context = this.getContext();
+    if (!context) return;
+    if (context.state === "suspended") {
+      void context.resume().then(() => {
+        if (this.musicEnabled && this.musicTimer === null) this.startMusic();
+      }).catch(() => undefined);
+    } else if (this.musicEnabled && this.musicTimer === null) {
+      this.startMusic();
+    }
+  }
+
   play(kind: SoundKind): void {
     if (!this.soundEnabled) return;
     const patterns: Record<SoundKind, number[]> = {
@@ -76,6 +88,12 @@ class SoundManager {
     if (this.musicTimer !== null || !this.musicEnabled) return;
     const context = this.getContext();
     if (!context) return;
+    if (context.state === "suspended") {
+      void context.resume().then(() => {
+        if (this.musicEnabled && this.musicTimer === null) this.startMusic();
+      }).catch(() => undefined);
+      return;
+    }
     // A gentle, clearly audible storybook tune in C major / A minor.
     // Melody, soft harmony and bass notes are synthesized locally; no network audio.
     const melody = [
