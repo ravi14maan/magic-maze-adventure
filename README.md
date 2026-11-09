@@ -57,7 +57,45 @@ npm run typecheck
 npm run build
 ```
 
-The current playable demo includes one sample maze, selection among the three starting characters, keyboard movement (arrow keys or W/A/S/D), touch movement buttons, and restart. Profiles, save data, coin rewards, actual character unlock transactions, the ten worlds and the 50-level campaign remain planned milestones.
+## Current playable version — v0.2
+
+The updated build is designed around a full-screen maze play view. Navigation to the level map is available from the game, and the pause overlay lets the player continue or return to the map.
+
+### Implemented in v0.2
+
+- A 15 × 23-cell long maze generated from a deterministic world/level seed.
+- Maze walls, dead ends and branching corridors, with a longer route than v0.1.
+- Traps, animated monsters, coins, gems, treasure chests, a golden key and a locked door in the relevant challenge levels.
+- Five rotating challenge categories across the 50-stage campaign: Classic, Monster, Obstacle, Key & Door and Tricky.
+- Ten themed worlds, each with five playable seeded levels.
+- World unlocking after all five levels in the previous world are completed; level-by-level progression and replay.
+- Three starting characters: Normal Girl, Normal Boy and Unicorn.
+- Six coin-unlockable characters with configurable prices.
+- Multiple local player profiles with separate coin balances, character ownership and level progress.
+- Cartoon avatar studio with emoji face, background colour and accessory choices.
+- Level completion rewards, stars, gems, trophies and a coin wallet.
+- Responsive pastel menus, level/world maps, pause/resume and touch D-pad controls.
+- Offline-first game assets and local save data; no photo upload, ads, real-money purchases or public chat.
+
+### Prototype limitations
+
+The v0.2 build is a much richer playable alpha, not the final art-polished release. Character/avatar art still uses emoji and simple vector-style game objects. Level layouts are generated procedurally from seeds, not individually hand-authored. The Tricky category currently focuses on key/door and hazard combinations; switches and elaborate hidden-path puzzles are not yet present. Character wardrobe, custom animation sets, music/sound settings, cloud backup, release signing and full physical-device QA remain future work.
+
+### Run locally
+
+Requirements: Node.js 22.12 or newer and npm.
+
+```bash
+npm install
+npm run dev
+```
+
+Open the local URL printed by Vite. To run the production checks:
+
+```bash
+npm run typecheck
+npm run build
+```
 
 ## Android demo APK
 
