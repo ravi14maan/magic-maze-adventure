@@ -1037,6 +1037,20 @@ export class GameScene extends Phaser.Scene {
     this.challengeContent(panel).append(button);
   }
 
+  private addChallengeCountdown(panel: HTMLElement, retryMessage: string, retry: () => void): void {
+    let seconds = difficultyForLevel(this.session.levelNumber, this.session.worldIndex).challengeSeconds;
+    const timer = this.addChallengeText(panel, "Time left: " + seconds + "s", "challenge-countdown");
+    this.challengeTimer = window.setInterval(() => {
+      if (!this.overlayElement?.isConnected) {
+        this.clearChallengeTimer();
+        return;
+      }
+      seconds--;
+      timer.textContent = "Time left: " + seconds + "s";
+      if (seconds <= 0) this.showChallengeFailed(retryMessage, retry);
+    }, 1000);
+  }
+
   private addChallengeText(panel: HTMLElement, text: string, className = "challenge-instruction"): HTMLParagraphElement {
     const paragraph = document.createElement("p");
     paragraph.className = className;
@@ -1178,6 +1192,7 @@ export class GameScene extends Phaser.Scene {
     const puzzle = patterns[(this.session.worldIndex * 3 + this.session.levelNumber + difficulty.rank) % patterns.length]!;
     const panel = this.createPanel("Monster Pattern", "Spot the pattern in the creature trail.", "👾");
     this.addChallengeText(panel, "Study the repeating pattern or number sequence. Which symbol belongs next?");
+    this.addChallengeCountdown(panel, "Time is up. Try the creature pattern again.", () => this.startPatternChallenge());
     const pattern = document.createElement("div");
     pattern.className = "pattern-display";
     pattern.textContent = puzzle.series.join("   ");
@@ -1212,6 +1227,7 @@ export class GameScene extends Phaser.Scene {
     }
     const panel = this.createPanel("Obstacle Reflex Course", "Watch the action pattern, then repeat it in order.", "⚡");
     this.addChallengeText(panel, "Memorise the jump and duck sequence. The symbols disappear before you enter it.");
+    this.addChallengeCountdown(panel, "Time is up. Try the obstacle reflex course again.", () => this.startObstacleSequenceChallenge());
     const display = document.createElement("div");
     display.className = "pattern-display";
     display.textContent = sequence.join("   →   ");
@@ -1260,6 +1276,7 @@ export class GameScene extends Phaser.Scene {
     const difficulty = difficultyForLevel(this.session.levelNumber, this.session.worldIndex);
     const panel = this.createPanel("The Royal Lock", "The gate needs a key matching every clue.", "🗝️");
     this.addChallengeText(panel, "The gate shows a BLUE STAR. Choose the only key matching both colour and symbol.");
+    this.addChallengeCountdown(panel, "Time is up. Try the royal lock again.", () => this.startKeyChallenge());
     const door = document.createElement("div");
     door.className = "pattern-display";
     door.textContent = "🔵  ⭐  🚪";
@@ -1299,6 +1316,7 @@ export class GameScene extends Phaser.Scene {
     const target = Array.from({ length }, (_, i) => runes[(i * 3 + this.session.worldIndex + this.session.levelNumber) % runes.length]!);
     const panel = this.createPanel("Ancient Rune Code", "Remember the order and enter every rune.", "🔮");
     this.addChallengeText(panel, "Memorise this code. The runes disappear after a short preview.");
+    this.addChallengeCountdown(panel, "Time is up. Try the rune sequence again.", () => this.startRuneSequenceChallenge());
     const code = document.createElement("div");
     code.className = "pattern-display rune-code";
     code.textContent = target.join("  →  ");
