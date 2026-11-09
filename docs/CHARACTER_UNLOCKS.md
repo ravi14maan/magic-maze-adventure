@@ -32,7 +32,7 @@
 
 ## Pricing
 
-Final coin prices are **not yet approved**. Keep prices in configuration/data rather than hardcoding them into UI logic. Balance prices through play-testing so each unlock is achievable through normal play. Show the price before confirmation and show a clear success message after purchase with coins.
+Prototype v0.2 coin prices are configured in `src/data/characters.ts`: Witch 80, Princess 120, Prince 110, Male Explorer 95, Knight 150 and Mermaid 135 coins. These are initial balancing values for play-testing, not Ahana's final approval. Keep prices in configuration/data rather than hardcoding them into UI logic, and adjust them after observing how quickly players earn coins. Show the price before confirmation and show a clear success message after purchase with coins.
 
 ## Suggested data model
 
