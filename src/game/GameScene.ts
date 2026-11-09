@@ -1190,7 +1190,14 @@ export class GameScene extends Phaser.Scene {
     const difficulty = difficultyForLevel(this.session.levelNumber, this.session.worldIndex);
     const length = Math.min(7, 3 + Math.floor(difficulty.rank / 2));
     const actionSymbols = ["⬆️", "⬇️"];
-    const sequence = Array.from({ length }, (_, i) => actionSymbols[(i + this.session.worldIndex + this.session.levelNumber) % 2]!);
+    let seed = (this.session.worldIndex + 3) * 127 + this.session.levelNumber * 59;
+    const nextRandom = (): number => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+    const sequence: string[] = [];
+    for (let i = 0; i < length; i++) {
+      let pick = Math.floor(nextRandom() * actionSymbols.length);
+      if (i >= 2 && sequence[i - 1] === sequence[i - 2] && sequence[i - 1] === actionSymbols[pick]) pick = 1 - pick;
+      sequence.push(actionSymbols[pick]!);
+    }
     const panel = this.createPanel("Obstacle Reflex Course", "Watch the action pattern, then repeat it in order.", "⚡");
     this.addChallengeText(panel, "Memorise the jump and duck sequence. The symbols disappear before you enter it.");
     const display = document.createElement("div");
@@ -1202,7 +1209,7 @@ export class GameScene extends Phaser.Scene {
     const hideDelay = Math.max(900, 2500 - difficulty.rank * 150);
     window.setTimeout(() => {
       if (this.overlayElement?.isConnected) {
-        display.textContent = "❔   →   ❔   →   ❔";
+        display.textContent = Array.from({ length }, () => "❔").join("   →   ");
         this.addChallengeText(panel, "Now tap the correct actions in the same order.");
       }
     }, hideDelay);
@@ -1229,7 +1236,7 @@ export class GameScene extends Phaser.Scene {
           this.showRetryHint(panel, "Watch the action order again and try to repeat it.");
           display.textContent = sequence.join("   →   ");
           window.setTimeout(() => {
-            if (this.overlayElement?.isConnected) display.textContent = "❔   →   ❔   →   ❔";
+            if (this.overlayElement?.isConnected) display.textContent = Array.from({ length }, () => "❔").join("   →   ");
           }, hideDelay);
         }
       });
