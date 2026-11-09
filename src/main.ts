@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { CHARACTERS, type CharacterId } from "./data/characters";
 import {
-  AVATAR_ACCESSORIES, AVATAR_BACKGROUNDS, AVATAR_EMOJIS,
+  AVATAR_ACCESSORIES, AVATAR_BACKGROUNDS, AVATAR_EMOJIS, HAIRSTYLES, OUTFITS,
   activeProfile, addProfile, loadStore, saveStore, updateProfile,
   type PlayerProfile, type ProfileStore
 } from "./data/profiles";
@@ -10,12 +10,13 @@ import {
 } from "./data/worlds";
 import { GameScene, type MazeProgress, type MazeReward } from "./game/GameScene";
 import type { MazeSession } from "./game/GameScene";
+import { gameAudio } from "./audio/SoundManager";
 import "./style.css";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("Application root #app was not found.");
 
-type Screen = "profiles" | "dashboard" | "worlds" | "levels" | "characters" | "avatar" | "play" | "result";
+type Screen = "profiles" | "dashboard" | "worlds" | "levels" | "characters" | "avatar" | "settings" | "play" | "result";
 let store: ProfileStore = loadStore();
 let screen: Screen = store.profiles.length ? "profiles" : "profiles";
 let currentWorldIndex = 0;
@@ -25,6 +26,11 @@ let game: Phaser.Game | null = null;
 let currentScene: GameScene | null = null;
 
 const profile = (): PlayerProfile | null => activeProfile(store);
+const DEFAULT_WARDROBE = { hairstyle: "🌸", outfit: "👗", accessory: "✨" };
+const configureAudio = (p: PlayerProfile | null): void => {
+  gameAudio.configure(p?.soundEnabled ?? true, p?.musicEnabled ?? false);
+};
+configureAudio(profile());
 const persist = (): void => saveStore(store);
 const escapeHtml = (value: string): string => value.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c);
 const avatarMarkup = (p: PlayerProfile): string =>
@@ -114,6 +120,7 @@ function renderDashboard(): void {
         <button class="feature-card character-feature" data-action="characters"><span class="feature-icon">🧙‍♀️</span><span><strong>Character Closet</strong><small>Choose heroes and unlock friends</small></span><b>›</b></button>
         <button class="feature-card avatar-feature" data-action="avatar"><span class="feature-icon">🎨</span><span><strong>Avatar Studio</strong><small>Make your own cartoon profile</small></span><b>›</b></button>
         <button class="feature-card world-feature" data-action="worlds"><span class="feature-icon">🌍</span><span><strong>World Map</strong><small>10 magical worlds · 50 levels</small></span><b>›</b></button>
+        <button class="feature-card settings-feature" data-action="settings"><span class="feature-icon">🎵</span><span><strong>Sound & Settings</strong><small>Music, sound effects and controls</small></span><b>›</b></button>
       </section>
       <footer class="screen-footer">Made with imagination by Ahana ✨</footer>
     </main>`;
@@ -194,7 +201,30 @@ function renderCharacters(): void {
             </article>`;
         }).join("")}
       </div>
+      <section class="wardrobe-panel">
+        <div class="wardrobe-heading"><div><p class="eyebrow">MAKE THIS HERO YOURS</p><h2>Character Wardrobe</h2></div><span class="wardrobe-preview" id="wardrobe-preview">${p.wardrobe?.hairstyle ?? "🌸"} ${p.wardrobe?.outfit ?? "👗"} ${p.wardrobe?.accessory ?? "✨"}</span></div>
+        <h3>Hairstyle</h3><div class="choice-row">${HAIRSTYLES.map(e=>`<button type="button" class="choice-chip ${(p.wardrobe?.hairstyle ?? "🌸")===e?"active":""}" data-action="wardrobe-hair" data-value="${e}">${e}</button>`).join("")}</div>
+        <h3>Outfit</h3><div class="choice-row">${OUTFITS.map(e=>`<button type="button" class="choice-chip ${(p.wardrobe?.outfit ?? "👗")===e?"active":""}" data-action="wardrobe-outfit" data-value="${e}">${e}</button>`).join("")}</div>
+        <h3>Accessory</h3><div class="choice-row">${AVATAR_ACCESSORIES.map(e=>`<button type="button" class="choice-chip ${(p.wardrobe?.accessory ?? "✨")===e?"active":""}" data-action="wardrobe-accessory" data-value="${e}">${e}</button>`).join("")}</div>
+        <p class="fine-print">Your outfit choices are saved separately for each player profile.</p>
+      </section>
       <div class="hint-card">🪙 Complete mazes and collect treasures to earn coins. Character unlocks belong to this profile.</div>
+    </main>`;
+}
+
+
+function renderSettings(): void {
+  const p = currentProfileOrThrow();
+  app!.innerHTML = `
+    <main class="screen content-screen">
+      ${subHeader("Sound & Settings", "Choose how Magic Maze Adventure sounds and feels.", "dashboard")}
+      <section class="settings-panel">
+        <div class="setting-row"><div class="setting-icon">🔔</div><div><strong>Sound effects</strong><small>Movement, treasure, traps and level-complete sounds</small></div><button class="toggle-button ${p.soundEnabled !== false ? "enabled" : ""}" data-action="settings-sound">${p.soundEnabled !== false ? "ON" : "OFF"}</button></div>
+        <div class="setting-row"><div class="setting-icon">🎵</div><div><strong>Background music</strong><small>Soft original ambient melody during play</small></div><button class="toggle-button ${p.musicEnabled === true ? "enabled" : ""}" data-action="settings-music">${p.musicEnabled === true ? "ON" : "OFF"}</button></div>
+        <div class="setting-row"><div class="setting-icon">🎮</div><div><strong>Movement controls</strong><small>Use the on-screen arrows or keyboard arrow keys / W A S D.</small></div></div>
+        <div class="setting-row"><div class="setting-icon">💾</div><div><strong>Save progress</strong><small>Profile progress, rewards and unlocked heroes are saved on this device.</small></div></div>
+      </section>
+      <div class="hint-card">🔒 This game has no chat, ads, real-money purchases or photo uploads.</div>
     </main>`;
 }
 
@@ -285,6 +315,7 @@ function renderPlay(): void {
         notify("The maze is still loading. Please tap again.");
         return;
       }
+      gameAudio.play("move");
       currentScene.move(delta[0], delta[1]);
     };
     control.addEventListener("pointerdown", handler, { passive: false });
@@ -301,6 +332,9 @@ function updateHud(data: MazeProgress): void {
   if (coins) coins.textContent = String(data.coins);
   if (gems) gems.textContent = `💎 ${data.gems}`;
   if (key) key.textContent = data.hasKey ? "🗝️ Key found" : "🗝️ Find key";
+  if (/collected|Treasure chest|found|activated|complete|portal reached/i.test(data.message)) gameAudio.play("collect");
+  else if (/trap|monster|lost/i.test(data.message)) gameAudio.play("hurt");
+  else if (/wall blocks|still hidden|locked/i.test(data.message)) gameAudio.play("click");
   notify(data.message);
 }
 
@@ -344,6 +378,7 @@ function render(): void {
   else if (screen === "levels") renderLevels();
   else if (screen === "characters") renderCharacters();
   else if (screen === "avatar") renderAvatar();
+  else if (screen === "settings") renderSettings();
   else if (screen === "play") renderPlay();
   else renderResult();
 }
@@ -392,6 +427,21 @@ app.addEventListener("click", (event) => {
     }
   } else if (action === "avatar") {
     screen="avatar";render();
+  } else if (action === "settings") {
+    screen="settings";render();
+  } else if ((action === "wardrobe-hair" || action === "wardrobe-outfit" || action === "wardrobe-accessory") && p) {
+    p.wardrobe = p.wardrobe ?? { ...DEFAULT_WARDROBE };
+    const value = button.dataset.value ?? "";
+    if (action === "wardrobe-hair") p.wardrobe.hairstyle = value;
+    if (action === "wardrobe-outfit") p.wardrobe.outfit = value;
+    if (action === "wardrobe-accessory") p.wardrobe.accessory = value;
+    updateProfile(store,p);render();
+  } else if (action === "settings-sound" && p) {
+    p.soundEnabled = p.soundEnabled === false;
+    updateProfile(store,p);configureAudio(p);gameAudio.play("click");render();
+  } else if (action === "settings-music" && p) {
+    p.musicEnabled = p.musicEnabled !== true;
+    updateProfile(store,p);configureAudio(p);gameAudio.play("click");render();
   } else if (action === "avatar-emoji" && p) {
     p.avatar.emoji=button.dataset.value??"👧";updateProfile(store,p);render();
   } else if (action === "avatar-bg" && p) {
@@ -428,7 +478,7 @@ app.addEventListener("submit",(event)=>{
   const data=new FormData(form);
   if(form.dataset.form==="create-profile"){
     const nickname=String(data.get("nickname")??"");
-    const p=addProfile(store,nickname);store.activeProfileId=p.id;screen="dashboard";render();
+    const p=addProfile(store,nickname);store.activeProfileId=p.id;configureAudio(p);screen="dashboard";render();
   }else if(form.dataset.form==="avatar"){
     const p=currentProfileOrThrow();
     p.nickname=String(data.get("nickname")??p.nickname).trim().slice(0,18)||"Adventurer";
