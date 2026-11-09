@@ -204,3 +204,40 @@ input:focus{border-color:#b48cce;box-shadow:0 0 0 3px #eadcf4}
   background:linear-gradient(135deg,#ffa9d2 0%,#7fe7ff 55%,#ffe06d 100%)
 }
 .hero-portrait i{z-index:3;background:#fff;border-radius:50%;padding:3px;box-shadow:0 2px 7px #17324a44}
+
+
+/* Supplied hero artwork and more readable movement state. */
+.hero-art-portrait{
+  display:block;width:100%;height:100%;max-height:152px;object-fit:contain;
+  object-position:center bottom;filter:drop-shadow(0 7px 7px rgba(10,35,65,.24));
+  position:relative;z-index:1
+}
+.hero-portrait{
+  min-height:150px;height:150px;
+  background:linear-gradient(135deg,#71dcff 0%,#fff27a 48%,#ff91c5 100%);
+  border:1px solid #fff
+}
+.hero-card.selected .hero-portrait{
+  background:linear-gradient(135deg,#2dbde9 0%,#ffe265 52%,#ff70b5 100%)
+}
+.hero-portrait i{z-index:3;background:#fff;border-radius:50%;padding:3px;box-shadow:0 2px 7px #17324a44}
+#dpad-forward.auto-walking{
+  background:linear-gradient(135deg,#a4f7c7,#35d982)!important;
+  color:#075d37!important;border-color:#13b968!important;
+  box-shadow:0 0 0 3px #52e49a55,0 3px 0 #18854c!important
+}
+.play-controls .control-help strong{color:#075e82}
+.play-controls .control-help small{color:#557d91}
+.memory-card-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.memory-card{min-height:55px;font-size:clamp(20px,5vw,29px)}
+.challenge-choice-row{grid-template-columns:repeat(4,minmax(0,1fr))}
+.challenge-choice{min-width:0;min-height:56px;font-size:clamp(21px,5vw,29px)}
+.challenge-key{min-height:51px;font-size:12px}
+.rune-code{font-size:clamp(18px,5vw,25px);letter-spacing:-.5px}
+@media(max-width:370px){
+  .hero-portrait{height:130px;min-height:130px}
+  .hero-art-portrait{max-height:132px}
+  .memory-card-grid{gap:6px}
+  .memory-card{min-height:47px}
+  .challenge-choice-row{gap:6px}
+}
