@@ -265,7 +265,7 @@ function renderPlay(): void {
     <main class="play-screen">
       <header class="play-topbar">
         <button class="play-back" data-action="levels" aria-label="Back to levels">← <span>Map</span></button>
-        <div class="play-title"><strong>${world.icon} ${world.name}</strong><small>Level ${currentLevel} · ${challengeLabel(challenge)}</small></div>
+        <div class="play-title"><strong>${world.icon} ${world.name}</strong><small>Level ${currentLevel} · Side-view Adventure</small></div>
         <div class="play-wallet">🪙 <b id="hud-coins">0</b></div>
         <button class="pause-button" data-action="pause">Ⅱ</button>
       </header>
@@ -273,7 +273,7 @@ function renderPlay(): void {
         <span id="hud-hearts">❤️❤️❤️❤️❤️</span>
         <span id="hud-gems">💎 0</span>
         <span id="hud-key">🚩 Challenge ahead</span>
-        <span class="hud-tip">Walk the path · jump over hazards · reach the finish 🏁</span>
+        <span class="hud-tip">Hold ▶ to walk · ▲ jump · ▼ duck · reach the finish 🏁</span>
       </div>
       <div class="maze-stage" id="maze-host"></div>
       <div class="play-controls">
@@ -283,7 +283,7 @@ function renderPlay(): void {
           <button data-action="move" data-dir="down" aria-label="Move down">▼</button>
           <button data-action="move" data-dir="right" aria-label="Move right">▶</button>
         </div>
-        <div class="control-help"><strong>Walk, jump and duck!</strong><small>Tap ▶ to walk · ▲ to jump · ▼ to duck</small></div>
+        <div class="control-help"><strong>Walk, jump and duck!</strong><small>Hold ▶ to walk · ▲ jump · ▼ duck</small></div>
       </div>
     </main>`;
   const session: MazeSession = { characterId: p.selectedCharacter, worldIndex: currentWorldIndex, levelNumber: currentLevel, challenge, world, appearance: p.wardrobe ?? DEFAULT_WARDROBE };
@@ -306,19 +306,40 @@ function renderPlay(): void {
     up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0]
   };
   document.querySelectorAll<HTMLButtonElement>(".dpad [data-dir]").forEach((control) => {
+    let repeatTimer: number | null = null;
+    let holdDelay: number | null = null;
+    const stopRepeat = (): void => {
+      if (holdDelay !== null) window.clearTimeout(holdDelay);
+      if (repeatTimer !== null) window.clearInterval(repeatTimer);
+      holdDelay = null;
+      repeatTimer = null;
+    };
     const handler = (event: PointerEvent): void => {
       event.preventDefault();
       event.stopPropagation();
       const delta = directions[control.dataset.dir ?? ""];
-      if (!delta) return;
-      if (!currentScene) {
-        notify("The maze is still loading. Please tap again.");
+      if (!delta || !currentScene) {
+        if (!currentScene) notify("The adventure is still loading. Please tap again.");
         return;
       }
       gameAudio.play("move");
       currentScene.move(delta[0], delta[1]);
+      // Holding the forward/back buttons walks continuously; jump and duck remain taps.
+      if (delta[0] !== 0) {
+        stopRepeat();
+        holdDelay = window.setTimeout(() => {
+          repeatTimer = window.setInterval(() => {
+            if (!currentScene) return;
+            currentScene.move(delta[0], 0);
+          }, 190);
+        }, 240);
+      }
     };
     control.addEventListener("pointerdown", handler, { passive: false });
+    control.addEventListener("pointerup", stopRepeat);
+    control.addEventListener("pointercancel", stopRepeat);
+    control.addEventListener("lostpointercapture", stopRepeat);
+    window.addEventListener("pointerup", stopRepeat);
     control.addEventListener("click", (event) => event.preventDefault());
   });
 }
