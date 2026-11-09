@@ -133,7 +133,7 @@ export class GameScene extends Phaser.Scene {
 
   private drawPlayer(id: CharacterId = this.getSelectedCharacter()): void {
     const character = getCharacter(id);
-    this.player.add(
+    this.player.add([
       this.add.circle(0, 0, 15, character.colour).setStrokeStyle(3, 0xffffff),
       this.add.text(0, -1, character.token, {
         fontFamily: "Trebuchet MS, sans-serif",
@@ -141,7 +141,7 @@ export class GameScene extends Phaser.Scene {
         fontStyle: "bold",
         color: "#ffffff"
       }).setOrigin(0.5)
-    );
+    ]);
   }
 
   private cellX(column: number): number {
