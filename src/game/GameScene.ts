@@ -238,71 +238,141 @@ export class GameScene extends Phaser.Scene {
     const floor = this.session.world.floor;
     const accent = this.session.world.accent;
     const underwater = this.session.worldIndex === 0;
-    this.add.rectangle(WORLD_LENGTH / 2, height / 2, WORLD_LENGTH, height, Number.parseInt(sky.replace("#", ""), 16));
 
-    // Layered scenery fills the tall mobile viewport. Underwater levels use
-    // bubbles, fish, coral and sea plants instead of inappropriate sky clouds.
-    for (let i = 0; i < 18; i++) {
-      const x = 45 + i * 185;
-      if (underwater) {
-        const bubbleY = 90 + (i % 5) * 92;
-        const bubble = this.add.circle(x, bubbleY, 11 + (i % 3) * 5, 0xffffff, 0.18)
-          .setStrokeStyle(2, 0xffffff, 0.55);
-        this.tweens.add({ targets: bubble, y: bubbleY - 24, alpha: 0.28, duration: 2100 + (i % 4) * 350, yoyo: true, repeat: -1 });
-        if (i % 2 === 0) {
-          this.add.text(x + 45, 165 + (i % 4) * 72, i % 4 === 0 ? "🐠" : "🐟", {
-            fontFamily: "system-ui", fontSize: "27px"
-          }).setAlpha(0.76);
-        }
-        if (i % 3 === 0) {
-          this.add.text(x + 10, this.groundY - 145 - (i % 2) * 38, i % 2 === 0 ? "🪸" : "🐚", {
-            fontFamily: "system-ui", fontSize: "42px"
-          });
-        }
-      } else {
-        this.add.ellipse(x, this.groundY - 54 - (i % 3) * 15, 340, 150, accent, 0.16);
-        this.add.text(x - 70, 54 + (i % 2) * 43, "☁️", { fontFamily: "system-ui", fontSize: "36px" });
+    if (underwater) {
+      // Deep-to-surface ocean gradient: bright shafts above, rich blue water below.
+      const water = this.add.graphics();
+      water.fillGradientStyle(0x39d9f2, 0x19a6d5, 0x075a9c, 0x032d61, 1);
+      water.fillRect(0, 0, WORLD_LENGTH, height);
+
+      // Sun rays break up the large open water area and move gently with the current.
+      for (let i = 0; i < 9; i++) {
+        const x = 100 + i * 365;
+        const ray = this.add.graphics();
+        ray.fillStyle(0xb9f6ff, 0.10 + (i % 3) * 0.025);
+        ray.fillTriangle(x, 0, x + 105, 0, x + 315, this.groundY + 12);
+        this.tweens.add({ targets: ray, alpha: 0.52, duration: 2400 + (i % 3) * 450, yoyo: true, repeat: -1 });
+      }
+
+      // Blue silhouettes of reef ridges and a distant seabed give the route depth.
+      const reef = this.add.graphics();
+      reef.fillStyle(0x064e7d, 0.64);
+      for (let i = 0; i < 12; i++) {
+        reef.fillEllipse(70 + i * 285, this.groundY - 46 - (i % 3) * 28, 410, 180 + (i % 2) * 45);
+      }
+      reef.fillStyle(0x0b7192, 0.46);
+      for (let i = 0; i < 14; i++) {
+        reef.fillEllipse(120 + i * 245, this.groundY + 25, 300, 100);
+      }
+
+      // Ancient submerged columns and broken arches form recognisable landmarks.
+      for (const ruinX of [250, 1040, 1810, 2670]) {
+        const ruin = this.add.graphics();
+        ruin.fillStyle(0x496f83, 0.78);
+        ruin.fillRoundedRect(ruinX, this.groundY - 255, 28, 185, 7);
+        ruin.fillRoundedRect(ruinX + 100, this.groundY - 255, 28, 185, 7);
+        ruin.fillRoundedRect(ruinX - 13, this.groundY - 265, 155, 20, 5);
+        ruin.lineStyle(12, 0x5a8996, 0.72);
+        ruin.beginPath();
+        ruin.arc(ruinX + 64, this.groundY - 249, 62, Math.PI, 0, false);
+        ruin.strokePath();
+        ruin.lineStyle(3, 0xa7d2c9, 0.36);
+        ruin.lineBetween(ruinX + 8, this.groundY - 210, ruinX + 8, this.groundY - 100);
+        ruin.lineBetween(ruinX + 108, this.groundY - 210, ruinX + 108, this.groundY - 100);
+      }
+
+      // Schools of fish are drawn as small independent shapes, not emoji clouds.
+      const fishColours = [0xff9d3b, 0x21d4d0, 0xff5e9b, 0xffd84b, 0x79e7ff];
+      for (let i = 0; i < 24; i++) {
+        const x = 80 + i * 128;
+        const y = 95 + (i % 5) * 64;
+        const scale = 0.62 + (i % 3) * 0.15;
+        const fish = this.add.graphics();
+        fish.fillStyle(fishColours[i % fishColours.length]!, 0.94);
+        fish.fillEllipse(0, 0, 34 * scale, 19 * scale);
+        fish.fillTriangle(-15 * scale, 0, -29 * scale, -12 * scale, -29 * scale, 12 * scale);
+        fish.fillStyle(0xffffff, 1);
+        fish.fillCircle(10 * scale, -3 * scale, 3 * scale);
+        fish.fillStyle(0x082d4b, 1);
+        fish.fillCircle(11 * scale, -3 * scale, 1.5 * scale);
+        fish.setPosition(x, y);
+        this.tweens.add({ targets: fish, x: x + 34 + (i % 4) * 15, y: y - 7, duration: 2600 + (i % 5) * 300, yoyo: true, repeat: -1 });
+      }
+
+      // Seaweed sways at the reef floor in rich greens, turquoise and coral pink.
+      for (let i = 0; i < 18; i++) {
+        const x = 25 + i * 178;
+        const colour = [0x13b89e, 0x43d6a1, 0x0b9a85, 0xf26b9b][i % 4]!;
+        const plant = this.add.graphics();
+        plant.lineStyle(7 + (i % 2) * 2, colour, 0.98);
+        plant.beginPath(); plant.moveTo(x, this.groundY + 9); plant.lineTo(x - 10, this.groundY - 48); plant.lineTo(x + 14, this.groundY - 103); plant.strokePath();
+        plant.beginPath(); plant.moveTo(x - 4, this.groundY - 30); plant.lineTo(x - 32, this.groundY - 66); plant.strokePath();
+        plant.beginPath(); plant.moveTo(x + 8, this.groundY - 59); plant.lineTo(x + 38, this.groundY - 91); plant.strokePath();
+        this.tweens.add({ targets: plant, angle: i % 2 ? 6 : -6, duration: 1500 + (i % 4) * 250, yoyo: true, repeat: -1 });
+      }
+
+      // Branching reef coral in saturated pink, red, orange and purple.
+      for (let i = 0; i < 16; i++) {
+        const x = 85 + i * 205;
+        const y = this.groundY - 16 - (i % 3) * 12;
+        const colour = [0xff5fa7, 0xff784e, 0x9f70ed, 0xffb33f, 0x2fe1d1][i % 5]!;
+        const coral = this.add.graphics();
+        coral.lineStyle(8, colour, 0.98, 1, true);
+        coral.beginPath(); coral.moveTo(x, y); coral.lineTo(x - 7, y - 36); coral.lineTo(x - 22, y - 58); coral.strokePath();
+        coral.beginPath(); coral.moveTo(x - 7, y - 36); coral.lineTo(x + 10, y - 62); coral.lineTo(x + 12, y - 81); coral.strokePath();
+        coral.beginPath(); coral.moveTo(x + 4, y - 47); coral.lineTo(x + 30, y - 58); coral.strokePath();
+        coral.fillStyle(colour, 1);
+        coral.fillCircle(x - 22, y - 58, 5); coral.fillCircle(x + 12, y - 81, 5); coral.fillCircle(x + 30, y - 58, 5);
+      }
+
+      // Bubble trails in several sizes drift upward across the full playfield.
+      for (let i = 0; i < 48; i++) {
+        const x = 28 + (i * 173) % (WORLD_LENGTH - 45);
+        const y = 45 + (i * 79) % (this.groundY - 70);
+        const radius = 3 + (i % 5) * 2;
+        const bubble = this.add.circle(x, y, radius, 0xc9f8ff, 0.12).setStrokeStyle(1.5, 0xe7ffff, 0.58);
+        this.tweens.add({ targets: bubble, y: y - 40 - (i % 4) * 8, alpha: 0.03, duration: 2800 + (i % 5) * 420, yoyo: true, repeat: -1 });
+      }
+    } else {
+      this.add.rectangle(WORLD_LENGTH / 2, height / 2, WORLD_LENGTH, height, Number.parseInt(sky.replace("#", ""), 16));
+      for (let i = 0; i < 16; i++) {
+        const x = 65 + i * 205;
+        this.add.ellipse(x, this.groundY - 54 - (i % 3) * 15, 340, 150, accent, 0.20);
         const scenery = this.session.worldIndex === 1 ? ["🍭", "🍬", "🍩"] :
           this.session.worldIndex === 4 ? ["🌲", "⛄", "❄️"] :
-          this.session.worldIndex === 5 ? ["🪐", "⭐", "🚀"] : ["🌳", "🌼", "🍄"];
-        this.add.text(x + 30, this.groundY - 92 - (i % 2) * 22, scenery[i % scenery.length]!, {
-          fontFamily: "system-ui", fontSize: "42px"
+          this.session.worldIndex === 5 ? ["🪐", "⭐", "🚀"] :
+          this.session.worldIndex === 6 ? ["🏰", "🛡️", "👑"] :
+          this.session.worldIndex === 8 ? ["🌷", "🧚", "🦋"] : ["🌳", "🌼", "🍄"];
+        this.add.text(x, this.groundY - 115 - (i % 2) * 24, scenery[i % scenery.length]!, {
+          fontFamily: "system-ui", fontSize: "43px"
         });
-      }
-    }
-
-    // Rolling reef / landscape silhouettes add depth behind the walking path.
-    const farLandscape = this.add.graphics();
-    farLandscape.fillStyle(accent, underwater ? 0.20 : 0.18);
-    for (let i = 0; i < 10; i++) {
-      farLandscape.fillEllipse(90 + i * 330, this.groundY - 80 - (i % 2) * 24, 420, 180);
-    }
-
-    // Sea plants repeat along the underwater route, with simple layered fronds.
-    if (underwater) {
-      for (let i = 0; i < 16; i++) {
-        const x = 35 + i * 205;
-        const plant = this.add.graphics();
-        plant.lineStyle(7, i % 2 === 0 ? 0x329d91 : 0x55b9a3, 0.9);
-        plant.beginPath(); plant.moveTo(x, this.groundY + 1); plant.lineTo(x - 6, this.groundY - 48); plant.lineTo(x + 13, this.groundY - 88); plant.strokePath();
-        plant.beginPath(); plant.moveTo(x + 3, this.groundY - 38); plant.lineTo(x + 32, this.groundY - 70); plant.strokePath();
-        plant.beginPath(); plant.moveTo(x - 3, this.groundY - 27); plant.lineTo(x - 28, this.groundY - 54); plant.strokePath();
       }
     }
 
     const groundSegments: Array<[number, number]> = [[0, 990], [1110, 2180], [2310, WORLD_LENGTH]];
     for (const [start, end] of groundSegments) {
-      this.add.rectangle((start + end) / 2, this.groundY + 95, end - start, 190, floor);
-      this.add.rectangle((start + end) / 2, this.groundY + 5, end - start, 14, accent);
+      const platformColour = underwater ? 0x28616d : floor;
+      const topColour = underwater ? 0x36c8d0 : accent;
+      this.add.rectangle((start + end) / 2, this.groundY + 95, end - start, 190, platformColour);
+      this.add.rectangle((start + end) / 2, this.groundY + 5, end - start, 18, topColour);
+      this.add.rectangle((start + end) / 2, this.groundY - 4, end - start, 4, underwater ? 0xc1fff5 : 0xffffff, 0.72);
       if (underwater) {
-        this.add.rectangle((start + end) / 2, this.groundY + 18, end - start, 7, 0xffffff, 0.28);
+        const stones = this.add.graphics();
+        stones.lineStyle(2, 0x93e0d7, 0.32);
+        for (let x = start + 12; x < end - 18; x += 62) {
+          stones.strokeRoundedRect(x, this.groundY + 34 + ((x / 62) % 2) * 20, 52, 28, 5);
+          stones.lineBetween(x + 10, this.groundY + 73, x + 44, this.groundY + 73);
+        }
       }
     }
+
     for (const gap of GAP_ZONES) {
-      this.add.rectangle((gap.left + gap.right) / 2, this.groundY + 24, gap.right - gap.left, 48, underwater ? 0x287d9d : 0x35435a, 0.9);
-      this.add.text((gap.left + gap.right) / 2, this.groundY + 45, underwater ? "🫧" : "⬇️", {
-        fontFamily: "system-ui", fontSize: "22px"
-      }).setOrigin(0.5);
+      this.add.rectangle((gap.left + gap.right) / 2, this.groundY + 24, gap.right - gap.left, 48, underwater ? 0x021c48 : 0x35435a, 0.96);
+      if (underwater) {
+        this.add.text((gap.left + gap.right) / 2, this.groundY + 45, "🫧", { fontFamily: "system-ui", fontSize: "22px" }).setOrigin(0.5);
+      } else {
+        this.add.text((gap.left + gap.right) / 2, this.groundY + 45, "⬇️", { fontFamily: "system-ui", fontSize: "22px" }).setOrigin(0.5);
+      }
     }
 
     const obstacleDefs: Array<[number, ObstacleKind]> = [
@@ -320,11 +390,10 @@ export class GameScene extends Phaser.Scene {
       this.obstacles.push({ x, kind, sprite, handled: false });
     }
 
-    // Visual jump cues are placed before both gaps so the timing is readable.
     for (const x of [920, 2110]) {
       const cue = this.add.text(x, this.groundY - 74, "⬆ JUMP!", {
         fontFamily: "system-ui", fontSize: "15px", fontStyle: "bold", color: "#ffffff",
-        backgroundColor: "#3b8da4", padding: { x: 7, y: 4 }
+        backgroundColor: "#087fa6", padding: { x: 7, y: 4 }
       }).setOrigin(0.5);
       this.tweens.add({ targets: cue, y: cue.y - 8, alpha: 0.55, duration: 560, yoyo: true, repeat: -1 });
     }
@@ -348,11 +417,11 @@ export class GameScene extends Phaser.Scene {
       fontFamily: "system-ui", fontSize: "18px", fontStyle: "bold", color: "#ffffff",
       backgroundColor: "#76539b", padding: { x: 10, y: 7 }
     }).setOrigin(0.5);
-    this.add.text(STATION_X, this.groundY - 45, "🎪", { fontFamily: "system-ui", fontSize: "58px" }).setOrigin(0.5);
+    this.add.text(STATION_X, this.groundY - 45, underwater ? "🐚" : "🎪", { fontFamily: "system-ui", fontSize: "58px" }).setOrigin(0.5);
     this.add.text(FINISH_X, this.groundY - 72, "🏁 🏆", { fontFamily: "system-ui", fontSize: "52px" }).setOrigin(0.5);
     this.add.text(width * 0.5, 8, this.session.world.name + "  •  LEVEL " + this.session.levelNumber, {
       fontFamily: "system-ui", fontSize: "12px", fontStyle: "bold", color: "#ffffff",
-      backgroundColor: "#00000044", padding: { x: 9, y: 5 }
+      backgroundColor: "#00000066", padding: { x: 9, y: 5 }
     }).setOrigin(0.5, 0).setScrollFactor(0);
   }
 
