@@ -123,8 +123,7 @@ class SoundManager {
 
     playBeat();
     this.musicTimer = window.setInterval(playBeat, 430);
-    // Ensure the audio context is resumed after the settings button gesture.
-    if (context.state === "suspended") void context.resume().catch(() => undefined);
+    // The context is already running here; scheduling now keeps the melody audible.
   }
 
   private stopMusic(): void {
