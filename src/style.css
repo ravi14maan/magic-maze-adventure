@@ -92,3 +92,101 @@ input:focus{border-color:#b48cce;box-shadow:0 0 0 3px #eadcf4}
 .dpad button{position:relative;z-index:5;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .play-controls{position:relative;z-index:10;pointer-events:auto}
 .play-controls button{pointer-events:auto}
+
+
+/* Bright, high-contrast adventure styling and reliable native challenge controls. */
+#maze-host{position:relative;isolation:isolate}
+.maze-stage{background:#087eb3}
+.dpad button.auto-walking{background:#b9f4ff;color:#075c80;border-color:#21b9e5;box-shadow:0 0 0 3px #46d6f455,0 3px 0 #1a9ac1}
+.control-help strong{color:#075c80}
+.control-help small{color:#52798a}
+.play-hud{color:#14516d;background:#eaffff;border-bottom-color:#8ad9ed}
+.play-topbar{border-bottom-color:#8ad9ed}
+.play-wallet{background:#fff2a8;color:#825400}
+.pause-button{background:#ffe6f5;color:#9a327b}
+
+.adventure-overlay{
+  position:absolute;inset:0;z-index:1000;display:grid;place-items:center;
+  padding:clamp(12px,3.5vw,25px);box-sizing:border-box;
+  overflow:auto;overscroll-behavior:contain;touch-action:pan-y;
+  background:linear-gradient(135deg,rgba(0,35,75,.78),rgba(9,93,140,.68));
+  -webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);
+  pointer-events:auto
+}
+.adventure-challenge-card{
+  width:min(100%,390px);max-height:100%;overflow:auto;box-sizing:border-box;
+  padding:clamp(18px,4vw,27px);border-radius:28px;text-align:center;
+  background:linear-gradient(155deg,#ffffff 0%,#f2fcff 55%,#fff6f0 100%);
+  border:3px solid #f8cc65;box-shadow:0 16px 45px #001e3b80,inset 0 0 0 2px #ffffff;
+  color:#164a70;overscroll-behavior:contain
+}
+.adventure-challenge-icon{
+  display:grid;place-items:center;width:72px;height:72px;margin:0 auto 8px;
+  border-radius:24px;background:linear-gradient(145deg,#80ebff,#e2fbff);
+  border:2px solid #34c3e6;font-size:42px;box-shadow:0 6px 0 #2da8d0
+}
+.adventure-challenge-card h2{
+  margin:8px 0 8px;color:#173d72;font-size:clamp(21px,5vw,27px);
+  line-height:1.12;font-weight:1000;letter-spacing:-.4px
+}
+.adventure-challenge-card>p{
+  margin:0 auto 14px;max-width:310px;color:#496c84;font-size:13px;line-height:1.45
+}
+.adventure-challenge-content{display:grid;gap:12px}
+.challenge-instruction{margin:0;color:#285a79;font-weight:800;font-size:13px;line-height:1.4}
+.challenge-status{margin:0;color:#0b7897;font-size:12px;font-weight:900}
+.adventure-challenge-button{
+  display:block;width:100%;min-height:52px;border:0;border-radius:17px;
+  font-size:15px;font-weight:1000;letter-spacing:.15px;
+  touch-action:manipulation;cursor:pointer;user-select:none;-webkit-user-select:none;
+  -webkit-tap-highlight-color:transparent;box-shadow:0 5px 0 rgba(0,0,0,.16)
+}
+.adventure-challenge-button.primary{
+  color:#fff;background:linear-gradient(180deg,#36d47c,#10a950);
+  border:2px solid #caffdc;text-shadow:0 1px 2px #126438
+}
+.adventure-challenge-button.secondary{
+  color:#145a7a;background:linear-gradient(180deg,#e5faff,#b9effb);border:2px solid #7bdbf2
+}
+.adventure-challenge-button:active,.challenge-choice:active,.challenge-key:active,.memory-card:active{
+  transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.14)
+}
+.memory-card-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.memory-card{
+  min-width:0;min-height:64px;border:2px solid #64cce9;border-radius:14px;
+  background:linear-gradient(145deg,#39b9e8,#137bd0);color:#fff;
+  font-size:30px;font-weight:900;box-shadow:0 4px 0 #12639d;
+  touch-action:manipulation;cursor:pointer;-webkit-tap-highlight-color:transparent
+}
+.memory-card.revealed{background:linear-gradient(145deg,#fff,#d8f8ff);color:#185b85}
+.memory-card.matched{background:linear-gradient(145deg,#b8ffce,#4bdc84);border-color:#2fba69;box-shadow:0 4px 0 #19874c}
+.pattern-display{
+  padding:16px 8px;border-radius:18px;background:linear-gradient(120deg,#e2faff,#fff2ba);
+  border:2px solid #6fd3ec;color:#164d83;font-size:clamp(25px,7vw,34px);font-weight:900
+}
+.challenge-choice-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.challenge-choice{
+  min-height:65px;border:2px solid #61cde8;border-radius:16px;
+  background:linear-gradient(145deg,#eaffff,#b8eeff);font-size:30px;
+  box-shadow:0 4px 0 #47a8cb;touch-action:manipulation;cursor:pointer
+}
+.challenge-key-list{display:grid;gap:9px}
+.challenge-key{
+  min-height:47px;border:2px solid #a1d8ec;border-radius:14px;
+  background:#f2fbff;color:#174e73;font-weight:900;font-size:14px;
+  box-shadow:0 3px 0 #b1d7e4;touch-action:manipulation;cursor:pointer
+}
+.challenge-key.pink{background:#ffe5f2;border-color:#f4a5cb}
+.challenge-key.blue{background:#dbf5ff;border-color:#61cde8}
+.challenge-key.gold{background:#fff3c9;border-color:#edc75a}
+.challenge-feedback{margin:0;padding:9px 11px;border-radius:12px;background:#fff0c9;color:#8d5a00;font-size:12px;font-weight:900}
+.challenge-rewards{padding:12px 8px;border-radius:15px;background:linear-gradient(90deg,#fff4bc,#ffe1a0);color:#885500;font-weight:1000;font-size:17px}
+@media(max-height:520px){
+ .adventure-challenge-card{padding:12px 16px;border-radius:20px}
+ .adventure-challenge-icon{width:48px;height:48px;font-size:28px;border-radius:15px;margin-bottom:4px}
+ .adventure-challenge-card h2{font-size:19px;margin:4px 0}
+ .adventure-challenge-card>p{font-size:11px;margin-bottom:7px}
+ .adventure-challenge-content{gap:7px}
+ .memory-card{min-height:48px;font-size:24px}
+ .adventure-challenge-button{min-height:43px}
+}
