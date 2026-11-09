@@ -476,6 +476,19 @@ export class GameScene extends Phaser.Scene {
     this.player = this.add.container(120, this.groundY, playerChildren).setDepth(20);
   }
 
+  private advanceAutoWalk(dt: number): void {
+    if (!this.autoWalkEnabled || !this.player || this.challengeOpen || this.complete) return;
+    const nextX = Math.min(FINISH_X + 30, this.player.x + 205 * dt);
+    if (!this.challengeCleared && nextX >= STATION_X - 70) {
+      this.player.x = STATION_X - 70;
+      this.autoWalkEnabled = false;
+      this.openChallengeStation();
+      return;
+    }
+    this.player.x = nextX;
+    this.player.setScale(this.facing, this.player.scaleY);
+  }
+
   private isOverGap(x: number): boolean {
     return GAP_ZONES.some(g => x > g.left && x < g.right);
   }
