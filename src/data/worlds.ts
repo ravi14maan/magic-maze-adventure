@@ -68,7 +68,7 @@ export function challengeForLevel(levelNumber: number, worldIndex = 0): Challeng
 export function challengeLabel(challenge: ChallengeType): string {
   const labels: Record<ChallengeType, string> = {
     classic: "Exploration Trail",
-    monster: "Monster Encounter",
+    monster: "Monster Pattern",
     obstacle: "Obstacle Course",
     "key-door": "Magic Key Quest",
     tricky: "Secret Passage Quest"
