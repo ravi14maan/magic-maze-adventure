@@ -8,6 +8,12 @@ export interface AvatarStyle {
   accessory: string;
 }
 
+export interface CharacterWardrobe {
+  hairstyle: string;
+  outfit: string;
+  accessory: string;
+}
+
 export interface PlayerProfile {
   id: string;
   nickname: string;
@@ -18,6 +24,9 @@ export interface PlayerProfile {
   completedLevels: string[];
   unlockedCharacters: CharacterId[];
   selectedCharacter: CharacterId;
+  wardrobe?: CharacterWardrobe;
+  soundEnabled?: boolean;
+  musicEnabled?: boolean;
   createdAt: number;
 }
 
@@ -30,6 +39,8 @@ export interface ProfileStore {
 export const AVATAR_EMOJIS = ["🧒", "👧", "🧑", "🧝", "🧚", "🦄", "🐱", "🐼", "🐸", "🐰", "🦊", "🐻"];
 export const AVATAR_BACKGROUNDS = ["#ffe0ef", "#dff4ff", "#e7e0ff", "#e6f7dc", "#fff0cf", "#dff8f4", "#f4e2ff", "#e7ecff"];
 export const AVATAR_ACCESSORIES = ["✨", "🌸", "⭐", "👑", "🎀", "🪽", "💫", "🍀"];
+export const HAIRSTYLES = ["🌸", "🎀", "🧢", "👑", "🪽", "✨"];
+export const OUTFITS = ["👗", "🥋", "🦺", "🧥", "👑", "🩱"];
 
 function makeId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `player-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -47,6 +58,9 @@ export function createProfile(nickname: string): PlayerProfile {
     completedLevels: [],
     unlockedCharacters: [...STARTING_CHARACTER_IDS],
     selectedCharacter: "normal-girl",
+    wardrobe: { hairstyle: "🌸", outfit: "👗", accessory: "✨" },
+    soundEnabled: true,
+    musicEnabled: false,
     createdAt: Date.now()
   };
 }
@@ -68,7 +82,12 @@ export function loadStore(): ProfileStore {
     const value: unknown = JSON.parse(raw);
     if (!value || typeof value !== "object") throw new Error("Invalid save");
     const candidate = value as Partial<ProfileStore>;
-    const profiles = Array.isArray(candidate.profiles) ? candidate.profiles.filter(validProfile) : [];
+    const profiles = Array.isArray(candidate.profiles) ? candidate.profiles.filter(validProfile).map((p) => ({
+      ...p,
+      wardrobe: p.wardrobe ?? { hairstyle: "🌸", outfit: "👗", accessory: "✨" },
+      soundEnabled: p.soundEnabled ?? true,
+      musicEnabled: p.musicEnabled ?? false
+    })) : [];
     return {
       version: 2,
       activeProfileId: profiles.some((p) => p.id === candidate.activeProfileId) ? candidate.activeProfileId ?? null : profiles[0]?.id ?? null,
