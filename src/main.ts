@@ -1,131 +1,405 @@
 import Phaser from "phaser";
 import { CHARACTERS, type CharacterId } from "./data/characters";
-import { GameScene } from "./game/GameScene";
+import {
+  AVATAR_ACCESSORIES, AVATAR_BACKGROUNDS, AVATAR_EMOJIS,
+  activeProfile, addProfile, loadStore, saveStore, updateProfile,
+  type PlayerProfile, type ProfileStore
+} from "./data/profiles";
+import {
+  WORLDS, challengeForLevel, challengeLabel, isLevelUnlocked, isWorldUnlocked, levelKey
+} from "./data/worlds";
+import { GameScene, type MazeProgress, type MazeReward } from "./game/GameScene";
+import type { MazeSession } from "./game/GameScene";
 import "./style.css";
 
 const app = document.querySelector<HTMLDivElement>("#app");
-if (!app) {
-  throw new Error("Application root #app was not found.");
-}
+if (!app) throw new Error("Application root #app was not found.");
 
-let selectedCharacter: CharacterId = "normal-girl";
+type Screen = "profiles" | "dashboard" | "worlds" | "levels" | "characters" | "avatar" | "play" | "result";
+let store: ProfileStore = loadStore();
+let screen: Screen = store.profiles.length ? "profiles" : "profiles";
+let currentWorldIndex = 0;
+let currentLevel = 1;
+let currentReward: MazeReward | null = null;
+let game: Phaser.Game | null = null;
+let currentScene: GameScene | null = null;
+let notice = "";
 
-app.innerHTML = `
-  <main class="page-shell">
-    <header class="hero">
-      <div class="sparkle" aria-hidden="true">✦ ✧ ✦</div>
-      <p class="eyebrow">A magical maze game by Ahana</p>
-      <h1>Magic Maze Adventure</h1>
-      <p class="subtitle">Pick your adventurer and find the way to the exit!</p>
-    </header>
-
-    <section class="character-panel" aria-labelledby="character-title">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Your adventure begins</p>
-          <h2 id="character-title">Choose your character</h2>
-        </div>
-        <span class="roster-count">3 ready · 6 to unlock</span>
-      </div>
-      <div class="character-grid">
-        ${CHARACTERS.map((character) => {
-          if (character.initiallyUnlocked) {
-            return `
-              <button class="character-card ${character.id === selectedCharacter ? "is-selected" : ""}" type="button"
-                data-character-id="${character.id}"
-                aria-pressed="${character.id === selectedCharacter}">
-                <span class="character-token" style="--character-colour:#${character.colour.toString(16).padStart(6, "0")}">${character.token}</span>
-                <span class="character-name">${character.name}</span>
-                <span class="character-state">Available</span>
-              </button>`;
-          }
-          return `
-            <div class="character-card is-locked" aria-label="${character.name}, locked">
-              <span class="character-token" style="--character-colour:#${character.colour.toString(16).padStart(6, "0")}">🔒</span>
-              <span class="character-name">${character.name}</span>
-              <span class="character-state">Unlock with coins</span>
-            </div>`;
-        }).join("")}
-      </div>
-      <p class="small-note">The six locked characters will become unlockable with coins earned in the full game.</p>
-    </section>
-
-    <section class="game-panel" aria-label="Playable maze">
-      <div class="game-status" id="game-status" role="status" aria-live="polite">Loading your maze…</div>
-      <div class="game-frame"><div id="game-container"></div></div>
-      <div class="game-actions">
-        <div class="touch-controls" aria-label="Touch movement controls">
-          <button type="button" data-move="up" aria-label="Move up">▲</button>
-          <div class="horizontal-controls">
-            <button type="button" data-move="left" aria-label="Move left">◀</button>
-            <button type="button" data-move="down" aria-label="Move down">▼</button>
-            <button type="button" data-move="right" aria-label="Move right">▶</button>
-          </div>
-        </div>
-        <button type="button" class="restart-button" id="restart-button">↻ Restart maze</button>
-      </div>
-    </section>
-
-    <footer>
-      <span>Made with imagination ✨</span>
-      <span>Prototype 0.1 · More magical worlds coming soon</span>
-    </footer>
-  </main>
-`;
-
-const statusElement = document.querySelector<HTMLDivElement>("#game-status");
-const reportStatus = (message: string): void => {
-  if (statusElement) statusElement.textContent = message;
+const profile = (): PlayerProfile | null => activeProfile(store);
+const persist = (): void => saveStore(store);
+const escapeHtml = (value: string): string => value.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c);
+const avatarMarkup = (p: PlayerProfile): string =>
+  `<span class="avatar-face" style="--avatar-bg:${p.avatar.background}">${p.avatar.emoji}<i>${p.avatar.accessory}</i></span>`;
+const progressCount = (p: PlayerProfile): number => p.completedLevels.length;
+const currentProfileOrThrow = (): PlayerProfile => {
+  const p = profile();
+  if (!p) throw new Error("Choose a player profile first.");
+  return p;
 };
 
-const scene = new GameScene(() => selectedCharacter, reportStatus);
+function destroyGame(): void {
+  currentScene = null;
+  if (game) {
+    game.destroy(true);
+    game = null;
+  }
+}
 
-new Phaser.Game({
-  type: Phaser.AUTO,
-  parent: "game-container",
-  width: 640,
-  height: 500,
-  backgroundColor: "#fff9fc",
-  scene: [scene],
-  scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH
-  },
-  render: {
-    antialias: true,
-    pixelArt: false
+function notify(message: string): void {
+  notice = message;
+  const el = document.querySelector<HTMLElement>("#toast");
+  if (el) {
+    el.textContent = message;
+    el.classList.add("show");
+    window.setTimeout(() => el.classList.remove("show"), 2300);
+  }
+}
+
+function renderProfiles(): void {
+  app!.innerHTML = `
+    <main class="screen screen-center">
+      <div class="brand-mark">✨</div>
+      <p class="eyebrow">A magical adventure by Ahana</p>
+      <h1 class="brand-title">Magic Maze<br><span>Adventure</span></h1>
+      <p class="lead">Choose who is going on an adventure today.</p>
+      <section class="profile-shell">
+        <h2>Who's playing?</h2>
+        <div class="profile-list">
+          ${store.profiles.map(p => `
+            <button class="profile-choice" data-action="select-profile" data-id="${escapeHtml(p.id)}">
+              ${avatarMarkup(p)}
+              <span><strong>${escapeHtml(p.nickname)}</strong><small>${progressCount(p)} levels complete · 🪙 ${p.coins}</small></span>
+              <b>›</b>
+            </button>`).join("") || '<p class="muted">No player profiles yet. Create the first adventurer!</p>'}
+        </div>
+        <form class="create-profile" data-form="create-profile">
+          <label for="profile-name">Create a new player</label>
+          <div class="inline-form">
+            <input id="profile-name" name="nickname" maxlength="18" placeholder="Enter a nickname" required autocomplete="off">
+            <button class="primary-button" type="submit">Create <span>✦</span></button>
+          </div>
+        </form>
+      </section>
+      <p class="fine-print">Profiles stay on this device. No account, photo upload or chat.</p>
+    </main>`;
+}
+
+function renderDashboard(): void {
+  const p = currentProfileOrThrow();
+  app!.innerHTML = `
+    <main class="screen dashboard-screen">
+      <header class="topbar">
+        <div class="brand-small"><span>✨</span> Magic Maze</div>
+        <button class="profile-switch" data-action="profiles">${avatarMarkup(p)}<span>${escapeHtml(p.nickname)}</span><b>⌄</b></button>
+      </header>
+      <section class="welcome-banner">
+        <div class="welcome-copy">
+          <p class="eyebrow">YOUR NEXT ADVENTURE</p>
+          <h1>Ready, ${escapeHtml(p.nickname)}?</h1>
+          <p>Twisty paths, secret treasures and magical surprises are waiting!</p>
+          <button class="primary-button large-button" data-action="worlds">Play Adventure <span>➜</span></button>
+        </div>
+        <div class="banner-art" aria-hidden="true"><span>🦄</span><i>✦</i><b>🌈</b></div>
+      </section>
+      <section class="stat-row">
+        <div class="stat-card"><span>🪙</span><strong>${p.coins}</strong><small>Magic coins</small></div>
+        <div class="stat-card"><span>💎</span><strong>${p.gems}</strong><small>Gems</small></div>
+        <div class="stat-card"><span>🏆</span><strong>${p.trophies}</strong><small>Trophies</small></div>
+        <div class="stat-card"><span>🗺️</span><strong>${progressCount(p)}/50</strong><small>Levels done</small></div>
+      </section>
+      <section class="dashboard-grid">
+        <button class="feature-card character-feature" data-action="characters"><span class="feature-icon">🧙‍♀️</span><span><strong>Character Closet</strong><small>Choose heroes and unlock friends</small></span><b>›</b></button>
+        <button class="feature-card avatar-feature" data-action="avatar"><span class="feature-icon">🎨</span><span><strong>Avatar Studio</strong><small>Make your own cartoon profile</small></span><b>›</b></button>
+        <button class="feature-card world-feature" data-action="worlds"><span class="feature-icon">🌍</span><span><strong>World Map</strong><small>10 magical worlds · 50 levels</small></span><b>›</b></button>
+      </section>
+      <footer class="screen-footer">Made with imagination by Ahana ✨</footer>
+    </main>`;
+}
+
+function renderWorlds(): void {
+  const p = currentProfileOrThrow();
+  app!.innerHTML = `
+    <main class="screen content-screen">
+      ${subHeader("World Map", "Complete all five levels to unlock the next world.", "dashboard")}
+      <div class="world-grid">
+        ${WORLDS.map((world, i) => {
+          const unlocked = isWorldUnlocked(p.completedLevels, i);
+          const done = [1,2,3,4,5].filter(n => p.completedLevels.includes(levelKey(i,n))).length;
+          return `
+            <button class="world-card ${unlocked ? "" : "locked"}" data-action="world" data-index="${i}" ${unlocked ? "" : "disabled"}>
+              <div class="world-art" style="--world-bg:${world.sky};--world-wall:#${world.wall.toString(16).padStart(6,"0")}"><span>${world.icon}</span><i>${unlocked ? "✦" : "🔒"}</i></div>
+              <strong>${world.name}</strong><small>${world.description}</small>
+              <span class="world-progress">${unlocked ? `${done}/5 levels complete` : "Complete the world before this one"}</span>
+            </button>`;
+        }).join("")}
+      </div>
+    </main>`;
+}
+
+function subHeader(title: string, subtitle: string, back: string): string {
+  return `
+    <header class="content-header">
+      <button class="back-button" data-action="${back}" aria-label="Go back">←</button>
+      <div><p class="eyebrow">MAGIC MAZE ADVENTURE</p><h1>${title}</h1><p>${subtitle}</p></div>
+      <div class="header-coins">🪙 ${profile()?.coins ?? 0}</div>
+    </header>`;
+}
+
+function renderLevels(): void {
+  const p = currentProfileOrThrow();
+  const world = WORLDS[currentWorldIndex]!;
+  app!.innerHTML = `
+    <main class="screen content-screen">
+      ${subHeader(world.name, world.description, "worlds")}
+      <div class="level-world-banner" style="--world-bg:${world.sky}">
+        <span>${world.icon}</span><div><strong>Chapter ${currentWorldIndex + 1}</strong><small>Five paths to master · ${[1,2,3,4,5].filter(n=>p.completedLevels.includes(levelKey(currentWorldIndex,n))).length}/5 completed</small></div>
+      </div>
+      <div class="level-grid">
+        ${[1,2,3,4,5].map(n => {
+          const unlocked = isLevelUnlocked(p.completedLevels,currentWorldIndex,n);
+          const done = p.completedLevels.includes(levelKey(currentWorldIndex,n));
+          const challenge = challengeForLevel(n);
+          const icons: Record<string,string> = {classic:"🧩",monster:"👾",obstacle:"⚡","key-door":"🗝️",tricky:"🔮"};
+          return `
+            <button class="level-card ${done ? "done" : ""} ${unlocked ? "" : "locked"}" data-action="level" data-level="${n}" ${unlocked ? "" : "disabled"}>
+              <span class="level-number">${done ? "✓" : unlocked ? n : "🔒"}</span>
+              <strong>Level ${n}</strong><small>${icons[challenge]} ${challengeLabel(challenge)}</small>
+              <span class="level-stars">${done ? "★★★" : "☆☆☆"}</span>
+            </button>`;
+        }).join("")}
+      </div>
+      <div class="hint-card">💡 <span>Tip: Look for coins and sparkling gems on your way. Watch out for traps and monsters!</span></div>
+    </main>`;
+}
+
+function renderCharacters(): void {
+  const p = currentProfileOrThrow();
+  app!.innerHTML = `
+    <main class="screen content-screen">
+      ${subHeader("Character Closet", "Three friends are ready. Six more are waiting to be unlocked.", "dashboard")}
+      <div class="character-grid-v2">
+        ${CHARACTERS.map(ch => {
+          const owned = p.unlockedCharacters.includes(ch.id);
+          const selected = p.selectedCharacter === ch.id;
+          return `
+            <article class="hero-card ${owned ? "" : "locked"} ${selected ? "selected" : ""}">
+              <div class="hero-portrait" style="--hero-colour:#${ch.colour.toString(16).padStart(6,"0")}"><span>${ch.token}</span>${owned ? "" : "<i>🔒</i>"}</div>
+              <strong>${ch.name}</strong><small>${ch.description}</small>
+              ${owned
+                ? `<button class="select-hero" data-action="select-character" data-id="${ch.id}">${selected ? "✓ Selected" : "Choose hero"}</button>`
+                : `<button class="unlock-hero" data-action="unlock-character" data-id="${ch.id}">🪙 ${ch.coinCost} coins</button>`}
+            </article>`;
+        }).join("")}
+      </div>
+      <div class="hint-card">🪙 Complete mazes and collect treasures to earn coins. Character unlocks belong to this profile.</div>
+    </main>`;
+}
+
+function renderAvatar(): void {
+  const p = currentProfileOrThrow();
+  app!.innerHTML = `
+    <main class="screen content-screen">
+      ${subHeader("Avatar Studio", "Create a fun cartoon look for your player profile.", "dashboard")}
+      <form class="avatar-editor" data-form="avatar">
+        <div class="avatar-preview" style="--avatar-bg:${p.avatar.background}">
+          <span>${p.avatar.emoji}</span><i>${p.avatar.accessory}</i>
+        </div>
+        <label for="avatar-nickname">Player nickname</label>
+        <input id="avatar-nickname" name="nickname" maxlength="18" required value="${escapeHtml(p.nickname)}">
+        <h3>Choose your cartoon face</h3>
+        <div class="choice-row">
+          ${AVATAR_EMOJIS.map(e=>`<button type="button" class="choice-chip ${p.avatar.emoji===e?"active":""}" data-action="avatar-emoji" data-value="${e}">${e}</button>`).join("")}
+        </div>
+        <h3>Choose a background</h3>
+        <div class="choice-row">
+          ${AVATAR_BACKGROUNDS.map(c=>`<button type="button" class="colour-chip ${p.avatar.background===c?"active":""}" style="--chip:${c}" data-action="avatar-bg" data-value="${c}" aria-label="Choose background"></button>`).join("")}
+        </div>
+        <h3>Add a little sparkle</h3>
+        <div class="choice-row">
+          ${AVATAR_ACCESSORIES.map(e=>`<button type="button" class="choice-chip ${p.avatar.accessory===e?"active":""}" data-action="avatar-accessory" data-value="${e}">${e}</button>`).join("")}
+        </div>
+        <button class="primary-button wide-button" type="submit">Save my avatar ✨</button>
+      </form>
+      <p class="fine-print">Avatars use in-game cartoon choices. Real-photo uploads are not supported.</p>
+    </main>`;
+}
+
+function renderPlay(): void {
+  const p = currentProfileOrThrow();
+  const world = WORLDS[currentWorldIndex]!;
+  const challenge = challengeForLevel(currentLevel);
+  app!.innerHTML = `
+    <main class="play-screen">
+      <header class="play-topbar">
+        <button class="play-back" data-action="levels" aria-label="Back to levels">← <span>Map</span></button>
+        <div class="play-title"><strong>${world.icon} ${world.name}</strong><small>Level ${currentLevel} · ${challengeLabel(challenge)}</small></div>
+        <div class="play-wallet">🪙 <b id="hud-coins">0</b></div>
+        <button class="pause-button" data-action="pause">Ⅱ</button>
+      </header>
+      <div class="play-hud">
+        <span id="hud-hearts">❤️❤️❤️❤️❤️</span>
+        <span id="hud-gems">💎 0</span>
+        <span id="hud-key">🗝️ Find key</span>
+        <span class="hud-tip">Reach the swirling portal 🌀</span>
+      </div>
+      <div class="maze-stage" id="maze-host"></div>
+      <div class="play-controls">
+        <div class="dpad">
+          <span></span><button data-action="move" data-dir="up" aria-label="Move up">▲</button><span></span>
+          <button data-action="move" data-dir="left" aria-label="Move left">◀</button>
+          <button data-action="move" data-dir="down" aria-label="Move down">▼</button>
+          <button data-action="move" data-dir="right" aria-label="Move right">▶</button>
+        </div>
+        <div class="control-help"><strong>Explore every turn!</strong><small>Collect coins 🪙 · Avoid traps ⚡ · Find keys 🗝️</small></div>
+      </div>
+    </main>`;
+  const session: MazeSession = { characterId: p.selectedCharacter, worldIndex: currentWorldIndex, levelNumber: currentLevel, challenge, world };
+  game = new Phaser.Game({
+    type: Phaser.AUTO, parent: "maze-host", width: 420, height: 600, backgroundColor: world.sky,
+    scene: [new GameScene(session, updateHud, completeLevel)],
+    scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH },
+    render: { antialias: true, pixelArt: false, roundPixels: true }
+  });
+  currentScene = game.scene.getScene("MazeScene") as GameScene;
+}
+
+function updateHud(data: MazeProgress): void {
+  const hearts = document.querySelector<HTMLElement>("#hud-hearts");
+  const coins = document.querySelector<HTMLElement>("#hud-coins");
+  const gems = document.querySelector<HTMLElement>("#hud-gems");
+  const key = document.querySelector<HTMLElement>("#hud-key");
+  if (hearts) hearts.textContent = "❤️".repeat(data.hearts) + "🖤".repeat(5-data.hearts);
+  if (coins) coins.textContent = String(data.coins);
+  if (gems) gems.textContent = `💎 ${data.gems}`;
+  if (key) key.textContent = data.hasKey ? "🗝️ Key found" : "🗝️ Find key";
+  notify(data.message);
+}
+
+function completeLevel(reward: MazeReward): void {
+  const p = currentProfileOrThrow();
+  const key = levelKey(currentWorldIndex,currentLevel);
+  const alreadyDone = p.completedLevels.includes(key);
+  const paidReward = alreadyDone ? { ...reward, coins: 8, gems: 0 } : reward;
+  if (!alreadyDone) p.completedLevels.push(key);
+  p.coins += paidReward.coins;
+  p.gems += paidReward.gems;
+  p.trophies += alreadyDone ? 0 : paidReward.stars;
+  updateProfile(store,p);
+  currentReward = { ...paidReward, stars: alreadyDone ? 1 : reward.stars };
+  screen = "result";
+  render();
+}
+
+function renderResult(): void {
+  const r = currentReward ?? {coins:0,gems:0,stars:1,challenge:"classic" as const};
+  const nextLevel = currentLevel < 5 ? currentLevel+1 : 1;
+  const hasNext = currentLevel < 5 || currentWorldIndex < 9;
+  app!.innerHTML = `
+    <main class="screen screen-center result-screen">
+      <div class="result-confetti">🎉 ✨ 🌟</div>
+      <p class="eyebrow">MAZE COMPLETED</p>
+      <h1 class="brand-title">Amazing job!</h1>
+      <p class="lead">You found your way through the maze.</p>
+      <div class="result-stars">${"⭐".repeat(r.stars)}${"☆".repeat(3-r.stars)}</div>
+      <div class="reward-row"><div><span>🪙</span><strong>+${r.coins}</strong><small>Coins</small></div><div><span>💎</span><strong>+${r.gems}</strong><small>Gems</small></div><div><span>🏆</span><strong>+${r.stars}</strong><small>Trophy stars</small></div></div>
+      <p class="result-note">${currentLevel===5 ? "World chapter complete! A new world may now be open." : "A new level is waiting for you."}</p>
+      <button class="primary-button large-button" data-action="next-level">${currentLevel===5 ? "Back to World Map" : "Next Level"} ➜</button>
+      <button class="secondary-button" data-action="levels">Choose another level</button>
+      <button class="text-button" data-action="dashboard">Main menu</button>
+    </main>`;
+}
+
+function render(): void {
+  if (screen !== "play") destroyGame();
+  if (screen === "profiles") renderProfiles();
+  else if (screen === "dashboard") renderDashboard();
+  else if (screen === "worlds") renderWorlds();
+  else if (screen === "levels") renderLevels();
+  else if (screen === "characters") renderCharacters();
+  else if (screen === "avatar") renderAvatar();
+  else if (screen === "play") renderPlay();
+  else renderResult();
+}
+
+function startLevel(level: number): void {
+  currentLevel = level;
+  screen = "play";
+  render();
+}
+
+app.addEventListener("click", (event) => {
+  const target = event.target as HTMLElement;
+  const button = target.closest<HTMLElement>("[data-action]");
+  if (!button) return;
+  const action = button.dataset.action;
+  const p = profile();
+
+  if (action === "select-profile") {
+    store.activeProfileId = button.dataset.id ?? null; persist(); screen = "dashboard"; render();
+  } else if (action === "profiles") {
+    screen = "profiles"; render();
+  } else if (action === "create-profile") {
+    screen = "profiles"; render();
+  } else if (action === "dashboard") {
+    screen = "dashboard"; render();
+  } else if (action === "worlds") {
+    screen = "worlds"; render();
+  } else if (action === "world") {
+    const index = Number(button.dataset.index);
+    if (p && isWorldUnlocked(p.completedLevels,index)) { currentWorldIndex=index; screen="levels"; render(); }
+  } else if (action === "levels") {
+    screen = "levels"; render();
+  } else if (action === "level") {
+    const level = Number(button.dataset.level);
+    if (p && isLevelUnlocked(p.completedLevels,currentWorldIndex,level)) startLevel(level);
+  } else if (action === "characters") {
+    screen = "characters"; render();
+  } else if (action === "select-character" && p) {
+    const id = button.dataset.id as CharacterId;
+    if (p.unlockedCharacters.includes(id)) { p.selectedCharacter=id; updateProfile(store,p); render(); }
+  } else if (action === "unlock-character" && p) {
+    const ch = CHARACTERS.find(c=>c.id===button.dataset.id);
+    if (ch && !p.unlockedCharacters.includes(ch.id)) {
+      if (p.coins < ch.coinCost) notify(`You need ${ch.coinCost-p.coins} more coins for ${ch.name}.`);
+      else { p.coins-=ch.coinCost; p.unlockedCharacters.push(ch.id); p.selectedCharacter=ch.id; updateProfile(store,p); notify(`${ch.name} joined your adventure!`); render(); }
+    }
+  } else if (action === "avatar") {
+    screen="avatar";render();
+  } else if (action === "avatar-emoji" && p) {
+    p.avatar.emoji=button.dataset.value??"👧";updateProfile(store,p);render();
+  } else if (action === "avatar-bg" && p) {
+    p.avatar.background=button.dataset.value??"#ffe0ef";updateProfile(store,p);render();
+  } else if (action === "avatar-accessory" && p) {
+    p.avatar.accessory=button.dataset.value??"✨";updateProfile(store,p);render();
+  } else if (action === "move" && currentScene) {
+    const dirs:Record<string,[number,number]>={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
+    const d=dirs[button.dataset.dir??""];if(d)currentScene.move(d[0],d[1]);
+  } else if (action === "pause") {
+    if (game) { game.scene.pause("MazeScene"); screen="dashboard"; notify("Game paused. Choose Play Adventure to continue your map."); render(); }
+  } else if (action === "next-level") {
+    if (currentLevel<5) startLevel(currentLevel+1);
+    else { currentWorldIndex=Math.min(9,currentWorldIndex+1);screen="worlds";render(); }
   }
 });
 
-document.querySelectorAll<HTMLButtonElement>("[data-character-id]").forEach((button) => {
-  button.addEventListener("click", () => {
-    const id = button.dataset.characterId as CharacterId | undefined;
-    if (!id) return;
-    selectedCharacter = id;
-    document.querySelectorAll("[data-character-id]").forEach((item) => {
-      item.classList.toggle("is-selected", item === button);
-      item.setAttribute("aria-pressed", String(item === button));
-    });
-    scene.setCharacter(id);
-    reportStatus(`${CHARACTERS.find((character) => character.id === id)?.name ?? "Character"} is ready. Find the exit!`);
-  });
+app.addEventListener("submit",(event)=>{
+  const form=event.target as HTMLFormElement;
+  if(!(form instanceof HTMLFormElement))return;
+  event.preventDefault();
+  const data=new FormData(form);
+  if(form.dataset.form==="create-profile"){
+    const nickname=String(data.get("nickname")??"");
+    const p=addProfile(store,nickname);store.activeProfileId=p.id;screen="dashboard";render();
+  }else if(form.dataset.form==="avatar"){
+    const p=currentProfileOrThrow();
+    p.nickname=String(data.get("nickname")??p.nickname).trim().slice(0,18)||"Adventurer";
+    updateProfile(store,p);screen="dashboard";render();
+  }
 });
 
-const movement: Record<string, [number, number]> = {
-  up: [0, -1],
-  down: [0, 1],
-  left: [-1, 0],
-  right: [1, 0]
-};
-
-document.querySelectorAll<HTMLButtonElement>("[data-move]").forEach((button) => {
-  button.addEventListener("click", () => {
-    const direction = button.dataset.move;
-    const delta = direction ? movement[direction] : undefined;
-    if (delta) scene.move(delta[0], delta[1]);
-  });
+app.addEventListener("input",(event)=>{
+  const input=event.target as HTMLInputElement;
+  if(input.id==="profile-name")return;
 });
 
-document.querySelector<HTMLButtonElement>("#restart-button")?.addEventListener("click", () => {
-  scene.restart();
-});
+render();
