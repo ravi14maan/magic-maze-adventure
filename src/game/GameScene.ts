@@ -1036,18 +1036,19 @@ export class GameScene extends Phaser.Scene {
   }
 
   private startChallenge(): void {
-    // Rotate challenge styles by world and level, so the same mini-game
-    // does not appear at every first level in every world.
-    const variant = (this.session.worldIndex * 5 + this.session.levelNumber - 1) % 4;
-    if (variant === 0) this.startMemoryChallenge();
-    else if (variant === 1) this.startPatternChallenge();
-    else if (variant === 2) this.startKeyChallenge();
-    else this.startRuneSequenceChallenge();
+    // Five genuinely different mini-game mechanics rotate across levels and worlds.
+    switch (this.session.challenge) {
+      case "classic": this.startMemoryChallenge(); break;
+      case "monster": this.startPatternChallenge(); break;
+      case "obstacle": this.startObstacleSequenceChallenge(); break;
+      case "key-door": this.startKeyChallenge(); break;
+      case "tricky": this.startRuneSequenceChallenge(); break;
+    }
   }
 
   private startMemoryChallenge(): void {
-    const progressIndex = this.session.worldIndex * 5 + this.session.levelNumber - 1;
-    const pairCount = Math.min(8, 6 + Math.floor(progressIndex / 10));
+    const difficulty = difficultyForLevel(this.session.levelNumber, this.session.worldIndex);
+    const pairCount = difficulty.memoryPairs;
     const themes: string[][] = [
       ["🐬", "🐠", "🐙", "🦀", "🐢", "🦑", "🪼", "🐳"],
       ["🍬", "🍭", "🍩", "🧁", "🍓", "🍦", "🍪", "🍉"],
@@ -1078,8 +1079,8 @@ export class GameScene extends Phaser.Scene {
     let locked = false;
     let pairs = 0;
     let moves = 0;
-    let timeLeft = Math.max(48, 72 - Math.floor(progressIndex / 5) * 2);
-    const moveLimit = pairCount * 3;
+    let timeLeft = difficulty.challengeSeconds;
+    const moveLimit = Math.max(pairCount * 2, Math.ceil(pairCount * (3 - difficulty.rank * 0.08)));
     const status = this.addChallengeText(panel, "", "challenge-status");
     const refreshStatus = (): void => {
       status.textContent = "Pairs " + pairs + "/" + pairCount + "  •  Moves left " + Math.max(0, moveLimit - moves) + "  •  " + timeLeft + "s";
@@ -1155,15 +1156,18 @@ export class GameScene extends Phaser.Scene {
   }
 
   private startPatternChallenge(): void {
+    const difficulty = difficultyForLevel(this.session.levelNumber, this.session.worldIndex);
     const patterns = [
       { series: ["💎", "⭐", "🐚", "💎", "⭐", "?"], answer: "🐚", choices: ["🐚", "💎", "🦀", "🌙"] },
       { series: ["🔵", "🔴", "🟡", "🔵", "🔴", "?"], answer: "🟡", choices: ["🟡", "🔵", "🟢", "⭐"] },
       { series: ["🐚", "🐠", "🦀", "🐚", "🐠", "?"], answer: "🦀", choices: ["🦀", "🐢", "🐬", "🐚"] },
-      { series: ["🌙", "⭐", "☀️", "🌙", "⭐", "?"], answer: "☀️", choices: ["☀️", "🌙", "⭐", "💎"] }
+      { series: ["🌙", "⭐", "☀️", "🌙", "⭐", "?"], answer: "☀️", choices: ["☀️", "🌙", "⭐", "💎"] },
+      { series: ["🔴", "🔴", "🔵", "🔴", "🔴", "🔵", "🔴", "?"], answer: "🔴", choices: ["🔴", "🔵", "🟡", "🟢"] },
+      { series: ["1", "2", "4", "8", "16", "?"], answer: "32", choices: ["24", "30", "32", "36"] }
     ];
-    const puzzle = patterns[(this.session.worldIndex + this.session.levelNumber) % patterns.length]!;
-    const panel = this.createPanel("Crystal Pattern", "Study the sequence and find the missing symbol.", "💎");
-    this.addChallengeText(panel, "Look for the repeating group. Which symbol comes next?");
+    const puzzle = patterns[(this.session.worldIndex * 3 + this.session.levelNumber + difficulty.rank) % patterns.length]!;
+    const panel = this.createPanel("Monster Pattern", "Spot the pattern in the creature trail.", "👾");
+    this.addChallengeText(panel, "Study the repeating pattern or number sequence. Which symbol belongs next?");
     const pattern = document.createElement("div");
     pattern.className = "pattern-display";
     pattern.textContent = puzzle.series.join("   ");
@@ -1178,25 +1182,83 @@ export class GameScene extends Phaser.Scene {
       button.textContent = symbol;
       button.addEventListener("click", () => {
         if (symbol === puzzle.answer) this.showChallengeWon();
-        else this.showRetryHint(panel, "Not quite. Check the repeating group at the start of the sequence.");
+        else this.showRetryHint(panel, "Not quite. Look at how the sequence changes from one symbol to the next.");
+      });
+      choices.append(button);
+    }
+  }
+
+  private startObstacleSequenceChallenge(): void {
+    const difficulty = difficultyForLevel(this.session.levelNumber, this.session.worldIndex);
+    const length = Math.min(7, 3 + Math.floor(difficulty.rank / 2));
+    const actionSymbols = ["⬆️", "⬇️"];
+    const sequence = Array.from({ length }, (_, i) => actionSymbols[(i + this.session.worldIndex + this.session.levelNumber) % 2]!);
+    const panel = this.createPanel("Obstacle Reflex Course", "Watch the action pattern, then repeat it in order.", "⚡");
+    this.addChallengeText(panel, "Memorise the jump and duck sequence. The symbols disappear before you enter it.");
+    const display = document.createElement("div");
+    display.className = "pattern-display";
+    display.textContent = sequence.join("   →   ");
+    this.challengeContent(panel).append(display);
+    let step = 0;
+    const status = this.addChallengeText(panel, "Actions completed: 0 / " + length, "challenge-status");
+    const hideDelay = Math.max(900, 2500 - difficulty.rank * 150);
+    window.setTimeout(() => {
+      if (this.overlayElement?.isConnected) {
+        display.textContent = "❔   →   ❔   →   ❔";
+        this.addChallengeText(panel, "Now tap the correct actions in the same order.");
+      }
+    }, hideDelay);
+    const choices = document.createElement("div");
+    choices.className = "challenge-choice-row";
+    this.challengeContent(panel).append(choices);
+    const actionButtons = [
+      { symbol: "⬆️", label: "JUMP" },
+      { symbol: "⬇️", label: "DUCK" }
+    ];
+    for (const action of actionButtons) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "challenge-choice";
+      button.textContent = action.symbol + " " + action.label;
+      button.addEventListener("click", () => {
+        if (action.symbol === sequence[step]) {
+          step++;
+          status.textContent = "Actions completed: " + step + " / " + length;
+          if (step === sequence.length) this.showChallengeWon();
+        } else {
+          step = 0;
+          status.textContent = "Wrong action. Start again: 0 / " + length;
+          this.showRetryHint(panel, "Watch the action order again and try to repeat it.");
+          display.textContent = sequence.join("   →   ");
+          window.setTimeout(() => {
+            if (this.overlayElement?.isConnected) display.textContent = "❔   →   ❔   →   ❔";
+          }, hideDelay);
+        }
       });
       choices.append(button);
     }
   }
 
   private startKeyChallenge(): void {
-    const panel = this.createPanel("The Royal Lock", "The lock needs the key with the correct colour AND symbol.", "🗝️");
-    this.addChallengeText(panel, "The gate shows a BLUE STAR. Choose the only key that matches both clues.");
+    const difficulty = difficultyForLevel(this.session.levelNumber, this.session.worldIndex);
+    const panel = this.createPanel("The Royal Lock", "The gate needs a key matching every clue.", "🗝️");
+    this.addChallengeText(panel, "The gate shows a BLUE STAR. Choose the only key matching both colour and symbol.");
     const door = document.createElement("div");
     door.className = "pattern-display";
     door.textContent = "🔵  ⭐  🚪";
     this.challengeContent(panel).append(door);
-    const options = [
+    const options: Array<[string, boolean, string]> = [
       ["🔴  ⭐  Red star key", false, "pink"],
       ["🔵  🌙  Blue moon key", false, "blue"],
       ["🔵  ⭐  Blue star key", true, "blue"],
       ["🟡  ⭐  Gold star key", false, "gold"]
-    ] as const;
+    ];
+    if (difficulty.rank >= 3) {
+      options.push(["🔵  💎  Blue crystal key", false, "blue"], ["🟣  ⭐  Purple star key", false, "purple"]);
+    }
+    if (difficulty.rank >= 6) {
+      options.push(["🔴  🌙  Red moon key", false, "pink"], ["🟡  🌙  Gold moon key", false, "gold"]);
+    }
     const choices = document.createElement("div");
     choices.className = "challenge-key-list";
     this.challengeContent(panel).append(choices);
@@ -1214,25 +1276,29 @@ export class GameScene extends Phaser.Scene {
   }
 
   private startRuneSequenceChallenge(): void {
-    const panel = this.createPanel("Ancient Rune Code", "Remember the order and enter all four runes.", "🔮");
-    const target = ["🐚", "⭐", "🐠", "💎"];
-    this.addChallengeText(panel, "Memorise this code. Then tap the runes in the same order.");
+    const difficulty = difficultyForLevel(this.session.levelNumber, this.session.worldIndex);
+    const runes = ["🐚", "⭐", "🐠", "💎", "🦀", "🌙", "🪼", "🔮"];
+    const length = Math.min(7, 3 + Math.floor(difficulty.rank / 2));
+    const target = Array.from({ length }, (_, i) => runes[(i * 3 + this.session.worldIndex + this.session.levelNumber) % runes.length]!);
+    const panel = this.createPanel("Ancient Rune Code", "Remember the order and enter every rune.", "🔮");
+    this.addChallengeText(panel, "Memorise this code. The runes disappear after a short preview.");
     const code = document.createElement("div");
     code.className = "pattern-display rune-code";
     code.textContent = target.join("  →  ");
     this.challengeContent(panel).append(code);
     let step = 0;
+    const preview = Math.max(900, 2500 - difficulty.rank * 160);
     window.setTimeout(() => {
       if (this.overlayElement?.isConnected) {
-        code.textContent = "❔  →  ❔  →  ❔  →  ❔";
-        this.addChallengeText(panel, "Now enter the four runes from memory.");
+        code.textContent = Array.from({ length }, () => "❔").join("  →  ");
+        this.addChallengeText(panel, "Now enter the rune code from memory.");
       }
-    }, 2400);
-    const status = this.addChallengeText(panel, "Code progress: 0 / 4", "challenge-status");
+    }, preview);
+    const status = this.addChallengeText(panel, "Code progress: 0 / " + length, "challenge-status");
     const choices = document.createElement("div");
     choices.className = "challenge-choice-row";
     this.challengeContent(panel).append(choices);
-    const symbols = ["🐚", "⭐", "🐠", "💎", "🦀", "🌙"];
+    const symbols = runes;
     for (const symbol of symbols) {
       const button = document.createElement("button");
       button.type = "button";
@@ -1241,12 +1307,12 @@ export class GameScene extends Phaser.Scene {
       button.addEventListener("click", () => {
         if (symbol === target[step]) {
           step++;
-          status.textContent = "Code progress: " + step + " / 4";
+          status.textContent = "Code progress: " + step + " / " + length;
           if (step === target.length) this.showChallengeWon();
         } else {
           step = 0;
-          status.textContent = "Wrong order! Code progress reset to 0 / 4.";
-          this.showRetryHint(panel, "Start again and remember the four-rune order.");
+          status.textContent = "Wrong order! Code progress reset to 0 / " + length + ".";
+          this.showRetryHint(panel, "Start again and remember the complete rune order.");
         }
       });
       choices.append(button);
