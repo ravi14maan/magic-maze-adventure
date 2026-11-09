@@ -273,7 +273,7 @@ function renderPlay(): void {
         <span id="hud-hearts">❤️❤️❤️❤️❤️</span>
         <span id="hud-gems">💎 0</span>
         <span id="hud-key">🚩 Challenge ahead</span>
-        <span class="hud-tip">Hold ▶ to walk · ▲ jump · ▼ duck · reach the finish 🏁</span>
+        <span class="hud-tip">Tap ▶ once to walk · tap ▲ to jump while moving · tap ▶ again to stop 🏁</span>
       </div>
       <div class="maze-stage" id="maze-host"></div>
       <div class="play-controls">
@@ -283,7 +283,7 @@ function renderPlay(): void {
           <button data-action="move" data-dir="down" aria-label="Move down">▼</button>
           <button data-action="move" data-dir="right" aria-label="Move right">▶</button>
         </div>
-        <div class="control-help"><strong>Walk, jump and duck!</strong><small>Hold ▶ to walk · ▲ jump · ▼ duck</small></div>
+        <div class="control-help"><strong>Walk, jump and duck!</strong><small>Tap ▶ once to walk · ▲ to jump while walking</small></div>
       </div>
     </main>`;
   const session: MazeSession = { characterId: p.selectedCharacter, worldIndex: currentWorldIndex, levelNumber: currentLevel, challenge, world, appearance: p.wardrobe ?? DEFAULT_WARDROBE };
@@ -306,21 +306,9 @@ function renderPlay(): void {
     up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0]
   };
   document.querySelectorAll<HTMLButtonElement>(".dpad [data-dir]").forEach((control) => {
-    let repeatTimer: number | null = null;
-    let holdDelay: number | null = null;
-    const stopRepeat = (): void => {
-      if (holdDelay !== null) window.clearTimeout(holdDelay);
-      if (repeatTimer !== null) window.clearInterval(repeatTimer);
-      window.removeEventListener("pointerup", stopRepeat);
-      window.removeEventListener("pointercancel", stopRepeat);
-      holdDelay = null;
-      repeatTimer = null;
-    };
     const handler = (event: PointerEvent): void => {
       event.preventDefault();
       event.stopPropagation();
-      window.addEventListener("pointerup", stopRepeat, { once: true });
-      window.addEventListener("pointercancel", stopRepeat, { once: true });
       const delta = directions[control.dataset.dir ?? ""];
       if (!delta || !currentScene) {
         if (!currentScene) notify("The adventure is still loading. Please tap again.");
@@ -328,22 +316,15 @@ function renderPlay(): void {
       }
       gameAudio.unlock();
       gameAudio.play("move");
-      currentScene.move(delta[0], delta[1]);
-      // Holding the forward/back buttons walks continuously; jump and duck remain taps.
-      if (delta[0] !== 0) {
-        stopRepeat();
-        holdDelay = window.setTimeout(() => {
-          repeatTimer = window.setInterval(() => {
-            if (!currentScene) return;
-            currentScene.move(delta[0], 0);
-          }, 190);
-        }, 240);
+      if (delta[0] > 0) {
+        const walking = currentScene.toggleAutoWalk();
+        control.classList.toggle("auto-walking", walking);
+        control.setAttribute("aria-pressed", String(walking));
+        return;
       }
+      currentScene.move(delta[0], delta[1]);
     };
     control.addEventListener("pointerdown", handler, { passive: false });
-    control.addEventListener("pointerup", stopRepeat);
-    control.addEventListener("pointercancel", stopRepeat);
-    control.addEventListener("lostpointercapture", stopRepeat);
     control.addEventListener("click", (event) => event.preventDefault());
   });
 }
