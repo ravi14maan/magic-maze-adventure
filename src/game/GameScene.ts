@@ -22,7 +22,6 @@ interface Gap { left: number; right: number }
 const WORLD_LENGTH = 3100;
 const STATION_X = 1500;
 const FINISH_X = 2940;
-const GAP_ZONES: Gap[] = [{ left: 990, right: 1080 }, { left: 2180, right: 2270 }];
 const SUPPLIED_HERO_IDS: CharacterId[] = ["normal-girl", "normal-boy", "unicorn", "witch", "princess", "mermaid"];
 
 export class GameScene extends Phaser.Scene {
@@ -54,7 +53,6 @@ export class GameScene extends Phaser.Scene {
   private playerShadow?: Phaser.GameObjects.Ellipse;
   private heroBaseScale = 1;
   private gapZones: Gap[] = [];
-  private ambientTick = 0;
   private challengeTimer: number | null = null;
   private readonly gapPrompted = [false, false];
   private readonly gapActionStarted = [false, false];
@@ -945,7 +943,7 @@ export class GameScene extends Phaser.Scene {
     if (fallenGap >= 0) {
       this.gapPrompted[fallenGap] = true;
       this.gapActionStarted[fallenGap] = false;
-      respawnX = GAP_ZONES[fallenGap]!.left - 65;
+      respawnX = this.gapZones[fallenGap]!.left - 65;
     }
     this.hearts--;
     if (this.hearts <= 0) {
