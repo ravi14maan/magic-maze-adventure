@@ -427,121 +427,200 @@ export class GameScene extends Phaser.Scene {
 
   private drawHero(): void {
     const character = getCharacter(this.session.characterId);
-    const appearance = this.session.appearance ?? { hairstyle: "🌸", outfit: "👗", accessory: "✨" };
-    const outfitPalette: Record<string, { main: number; shade: number; trim: number }> = {
-      "👗": { main: 0xe985b5, shade: 0xc75e91, trim: 0xffd5e7 },
-      "🥋": { main: 0xf5eee9, shade: 0xd6b7ad, trim: 0xe985b5 },
-      "🦺": { main: 0x69a9d8, shade: 0x3f7eaf, trim: 0xffdc8a },
-      "🧥": { main: 0x9279bd, shade: 0x6d5796, trim: 0xe5d7ff },
-      "👑": { main: 0xe9a0c1, shade: 0xb96892, trim: 0xf7d67b },
-      "🩱": { main: 0x5fc0bd, shade: 0x368e90, trim: 0xb5f0e7 }
-    };
-    const palette = outfitPalette[appearance.outfit] ?? {
-      main: character.colour, shade: 0x76577f, trim: 0xffd5e7
-    };
     const isBoy = this.session.characterId === "normal-boy" || this.session.characterId === "prince" ||
       this.session.characterId === "male-explorer" || this.session.characterId === "knight";
-    const skin = 0xf4c7a5;
+    const defaultOutfit = isBoy ? "🦺" : "👗";
+    const appearance = this.session.appearance ?? { hairstyle: "🎀", outfit: defaultOutfit, accessory: "✨" };
+    const heroPalettes: Record<CharacterId, { hair: number; eyes: number; main: number; shade: number; trim: number }> = {
+      "normal-girl": { hair: 0x5b2e38, eyes: 0x653b9c, main: 0xff4e9b, shade: 0xc92e78, trim: 0xffe66b },
+      "normal-boy": { hair: 0x382b32, eyes: 0x2986ba, main: 0x168ee0, shade: 0x0c579f, trim: 0xffd35b },
+      unicorn: { hair: 0xa24bbd, eyes: 0x328dcb, main: 0x9b68f5, shade: 0x6841c5, trim: 0x79edfa },
+      witch: { hair: 0x3b245b, eyes: 0x6b4bc0, main: 0x7544c8, shade: 0x49258d, trim: 0xffd65c },
+      princess: { hair: 0x813c2f, eyes: 0x3d8eae, main: 0xbd60ef, shade: 0x7e32b6, trim: 0xffdf62 },
+      prince: { hair: 0x402b2d, eyes: 0x3286d1, main: 0x2674d8, shade: 0x17458f, trim: 0xffd45b },
+      "male-explorer": { hair: 0x684126, eyes: 0x3f9a76, main: 0x24a889, shade: 0x14745f, trim: 0xf4c34e },
+      knight: { hair: 0x4a5262, eyes: 0x4b8fca, main: 0x9db2c6, shade: 0x596d89, trim: 0xffdf71 },
+      mermaid: { hair: 0x0b8fa7, eyes: 0x218fc1, main: 0x21c9bc, shade: 0x087e9a, trim: 0xff85c6 }
+    };
+    const hero = heroPalettes[this.session.characterId];
+    const outfitPalette: Record<string, { main: number; shade: number; trim: number }> = {
+      "👗": { main: hero.main, shade: hero.shade, trim: hero.trim },
+      "🥋": { main: 0xfff8ef, shade: 0xd7b9b1, trim: 0xff91c2 },
+      "🦺": { main: hero.main, shade: hero.shade, trim: hero.trim },
+      "🧥": { main: 0x8656db, shade: 0x5738a4, trim: 0xffdf70 },
+      "👑": { main: 0xffa2c8, shade: 0xc54b91, trim: 0xffe66b },
+      "🩱": { main: 0x16c6bb, shade: 0x087f9f, trim: 0xff8bd0 }
+    };
+    const palette = outfitPalette[appearance.outfit] ?? { main: hero.main, shade: hero.shade, trim: hero.trim };
+    const skin = 0xffd0af;
 
-    const shadow = this.add.ellipse(0, -2, 48, 13, 0x3d3651, 0.18);
+    const shadow = this.add.ellipse(0, -2, 50, 13, 0x001d43, 0.34);
     const backHair = this.add.graphics();
-    backHair.fillStyle(0x533548, 1);
-    backHair.fillEllipse(0, -83, 43, 39);
-    backHair.fillRoundedRect(-20, -85, 11, 41, 5);
-    backHair.fillRoundedRect(9, -85, 11, 41, 5);
+    backHair.fillStyle(hero.hair, 1);
+    backHair.fillEllipse(0, -84, isBoy ? 41 : 48, isBoy ? 38 : 54);
+    if (!isBoy) {
+      backHair.fillEllipse(-20, -62, 17, 42);
+      backHair.fillEllipse(20, -61, 17, 44);
+      backHair.fillTriangle(-25, -51, -8, -53, -24, -25);
+      backHair.fillTriangle(23, -50, 9, -52, 26, -27);
+    }
 
     const leftLeg = this.add.graphics();
-    leftLeg.lineStyle(6, 0x59435f, 1);
-    leftLeg.beginPath(); leftLeg.moveTo(0, 0); leftLeg.lineTo(-2, 14); leftLeg.strokePath();
-    leftLeg.fillStyle(0x76577f, 1); leftLeg.fillRoundedRect(-9, 11, 15, 7, 3);
+    leftLeg.lineStyle(7, 0x3c3155, 1);
+    leftLeg.beginPath(); leftLeg.moveTo(0, 0); leftLeg.lineTo(-3, 15); leftLeg.strokePath();
+    leftLeg.fillStyle(0xffd05b, 1); leftLeg.fillRoundedRect(-11, 12, 18, 8, 4);
     leftLeg.setPosition(-7, -15);
     const rightLeg = this.add.graphics();
-    rightLeg.lineStyle(6, 0x59435f, 1);
-    rightLeg.beginPath(); rightLeg.moveTo(0, 0); rightLeg.lineTo(2, 14); rightLeg.strokePath();
-    rightLeg.fillStyle(0x76577f, 1); rightLeg.fillRoundedRect(-5, 11, 15, 7, 3);
+    rightLeg.lineStyle(7, 0x3c3155, 1);
+    rightLeg.beginPath(); rightLeg.moveTo(0, 0); rightLeg.lineTo(3, 15); rightLeg.strokePath();
+    rightLeg.fillStyle(0xffd05b, 1); rightLeg.fillRoundedRect(-6, 12, 18, 8, 4);
     rightLeg.setPosition(7, -15);
     this.leftLeg = leftLeg;
     this.rightLeg = rightLeg;
 
     const leftArm = this.add.graphics();
-    leftArm.lineStyle(8, skin, 1);
-    leftArm.beginPath(); leftArm.moveTo(0, 0); leftArm.lineTo(-5, 17); leftArm.strokePath();
-    leftArm.fillStyle(skin, 1); leftArm.fillCircle(-5, 18, 4);
-    leftArm.setPosition(-13, -48);
+    leftArm.lineStyle(9, skin, 1);
+    leftArm.beginPath(); leftArm.moveTo(0, 0); leftArm.lineTo(-7, 17); leftArm.strokePath();
+    leftArm.fillStyle(skin, 1); leftArm.fillCircle(-7, 18, 5);
+    leftArm.setPosition(-14, -47);
     const rightArm = this.add.graphics();
-    rightArm.lineStyle(8, skin, 1);
-    rightArm.beginPath(); rightArm.moveTo(0, 0); rightArm.lineTo(5, 17); rightArm.strokePath();
-    rightArm.fillStyle(skin, 1); rightArm.fillCircle(5, 18, 4);
-    rightArm.setPosition(13, -48);
+    rightArm.lineStyle(9, skin, 1);
+    rightArm.beginPath(); rightArm.moveTo(0, 0); rightArm.lineTo(7, 17); rightArm.strokePath();
+    rightArm.fillStyle(skin, 1); rightArm.fillCircle(7, 18, 5);
+    rightArm.setPosition(14, -47);
     this.leftArm = leftArm;
     this.rightArm = rightArm;
 
     const clothes = this.add.graphics();
     clothes.fillStyle(palette.shade, 1);
-    clothes.fillRoundedRect(-14, -53, 28, 28, 8);
+    clothes.fillRoundedRect(-15, -54, 30, 29, 9);
     clothes.fillStyle(palette.main, 1);
-    clothes.fillRoundedRect(-12, -52, 24, 25, 7);
+    clothes.fillRoundedRect(-13, -53, 26, 26, 8);
     if (isBoy) {
-      clothes.fillRoundedRect(-13, -30, 26, 17, 5);
+      clothes.fillRoundedRect(-14, -30, 28, 17, 5);
       clothes.fillStyle(palette.shade, 1);
-      clothes.fillRoundedRect(-12, -14, 10, 8, 3);
-      clothes.fillRoundedRect(2, -14, 10, 8, 3);
-    } else {
-      // A real flared dress silhouette: fitted bodice, waist and layered skirt.
-      clothes.fillStyle(palette.shade, 1);
-      clothes.fillTriangle(-12, -31, 12, -31, -22, -2);
-      clothes.fillTriangle(12, -31, 22, -2, -22, -2);
-      clothes.fillStyle(palette.main, 1);
-      clothes.fillTriangle(-10, -31, 10, -31, -18, -4);
-      clothes.fillTriangle(10, -31, 18, -4, -18, -4);
-      clothes.lineStyle(1.5, palette.trim, 0.95);
-      clothes.beginPath(); clothes.moveTo(-18, -5); clothes.lineTo(18, -5); clothes.strokePath();
+      clothes.fillRoundedRect(-13, -15, 11, 9, 3);
+      clothes.fillRoundedRect(2, -15, 11, 9, 3);
       clothes.fillStyle(palette.trim, 1);
-      clothes.fillCircle(0, -29, 3.2);
-      clothes.fillCircle(-7, -13, 1.8); clothes.fillCircle(7, -13, 1.8);
+      clothes.fillTriangle(-4, -50, 0, -41, 4, -50);
+      clothes.fillCircle(0, -31, 3);
+    } else {
+      // Layered, flared fantasy dress with a bright bodice, skirt and trim.
       clothes.fillStyle(palette.shade, 1);
-      clothes.fillTriangle(-5, -51, 0, -44, 5, -51);
+      clothes.fillTriangle(-12, -32, 12, -32, -24, -1);
+      clothes.fillTriangle(12, -32, 24, -1, -24, -1);
+      clothes.fillStyle(palette.main, 1);
+      clothes.fillTriangle(-10, -32, 10, -32, -20, -4);
+      clothes.fillTriangle(10, -32, 20, -4, -20, -4);
+      clothes.fillStyle(palette.trim, 1);
+      clothes.fillRoundedRect(-13, -34, 26, 5, 2);
+      clothes.lineStyle(2, 0xffffff, 0.9);
+      clothes.lineBetween(-19, -5, 19, -5);
+      clothes.fillStyle(0xffffff, 0.9);
+      clothes.fillCircle(-9, -13, 2); clothes.fillCircle(0, -8, 2); clothes.fillCircle(9, -13, 2);
+      clothes.fillStyle(palette.trim, 1);
+      clothes.fillCircle(0, -29, 4);
+      clothes.fillTriangle(-6, -52, 0, -44, 6, -52);
+      // Tiny shoulder frills make the dress read as clothing rather than a block.
+      clothes.fillCircle(-13, -46, 5); clothes.fillCircle(13, -46, 5);
     }
-    clothes.fillStyle(palette.trim, 1);
-    clothes.fillCircle(0, -42, 2.1);
 
     const head = this.add.graphics();
     head.fillStyle(skin, 1);
-    head.fillCircle(0, -76, 18);
-    head.lineStyle(1.5, 0xd99a86, 1);
-    head.strokeCircle(0, -76, 18);
-    // Draw the facial details after the fringe so the eyes and smile stay visible.
-    const faceDetails = this.add.graphics();
-    faceDetails.lineStyle(1.6, 0x583c43, 1);
-    faceDetails.beginPath(); faceDetails.moveTo(-10, -83); faceDetails.lineTo(-5, -84); faceDetails.strokePath();
-    faceDetails.beginPath(); faceDetails.moveTo(5, -84); faceDetails.lineTo(10, -83); faceDetails.strokePath();
-    faceDetails.fillStyle(0x49313e, 1);
-    faceDetails.fillEllipse(-6, -77, 3.5, 5.5);
-    faceDetails.fillEllipse(6, -77, 3.5, 5.5);
-    faceDetails.fillStyle(0xffffff, 1);
-    faceDetails.fillCircle(-6.7, -78, 1.1); faceDetails.fillCircle(5.3, -78, 1.1);
-    faceDetails.fillStyle(0xf18b9d, 0.35);
-    faceDetails.fillEllipse(-11, -69, 5, 3); faceDetails.fillEllipse(11, -69, 5, 3);
-    faceDetails.lineStyle(1.7, 0x9b536a, 1);
-    faceDetails.beginPath(); faceDetails.arc(0, -70, 4.5, 0.2, Math.PI - 0.2, false); faceDetails.strokePath();
+    head.fillCircle(0, -78, 21);
+    head.lineStyle(1.4, 0xe9a78f, 1);
+    head.strokeCircle(0, -78, 21);
 
     const frontHair = this.add.graphics();
-    frontHair.fillStyle(0x533548, 1);
-    frontHair.fillEllipse(0, -91, 39, 19);
-    frontHair.fillCircle(-13, -83, 8);
-    frontHair.fillCircle(-3, -85, 7);
-    frontHair.fillCircle(7, -84, 7);
-    frontHair.fillStyle(0x745067, 0.8);
-    frontHair.fillEllipse(-9, -96, 13, 4);
+    frontHair.fillStyle(hero.hair, 1);
+    frontHair.fillEllipse(0, -94, 45, 22);
+    frontHair.fillCircle(-15, -84, 9);
+    frontHair.fillCircle(-3, -87, 8);
+    frontHair.fillCircle(9, -85, 8);
+    if (isBoy) {
+      frontHair.fillTriangle(-18, -91, -23, -105, -7, -93);
+      frontHair.fillTriangle(-3, -92, 1, -108, 8, -93);
+      frontHair.fillTriangle(8, -92, 17, -103, 17, -86);
+    } else {
+      frontHair.fillEllipse(-21, -74, 11, 30);
+      frontHair.fillEllipse(21, -74, 11, 30);
+    }
+    frontHair.lineStyle(2, 0xffdfab, 0.72);
+    frontHair.lineBetween(-17, -99, -7, -102);
+    frontHair.lineBetween(2, -101, 13, -99);
 
-    const hairPin = this.add.text(-15, -99, appearance.hairstyle, {
+    // Big anime-style eyes, bright irises, catchlights, blush and a smile.
+    const faceDetails = this.add.graphics();
+    faceDetails.lineStyle(1.8, hero.hair, 1);
+    faceDetails.beginPath(); faceDetails.moveTo(-12, -86); faceDetails.lineTo(-6, -88); faceDetails.strokePath();
+    faceDetails.beginPath(); faceDetails.moveTo(6, -88); faceDetails.lineTo(12, -86); faceDetails.strokePath();
+    faceDetails.fillStyle(0xffffff, 1);
+    faceDetails.fillEllipse(-7, -79, 7.8, 10);
+    faceDetails.fillEllipse(7, -79, 7.8, 10);
+    faceDetails.fillStyle(hero.eyes, 1);
+    faceDetails.fillEllipse(-7, -78, 5.3, 7.5);
+    faceDetails.fillEllipse(7, -78, 5.3, 7.5);
+    faceDetails.fillStyle(0x211c39, 1);
+    faceDetails.fillCircle(-7, -77, 2.1);
+    faceDetails.fillCircle(7, -77, 2.1);
+    faceDetails.fillStyle(0xffffff, 1);
+    faceDetails.fillCircle(-8.5, -81, 2.1);
+    faceDetails.fillCircle(5.5, -81, 2.1);
+    faceDetails.fillStyle(0xff8da4, 0.5);
+    faceDetails.fillEllipse(-13, -69, 6, 3.2);
+    faceDetails.fillEllipse(13, -69, 6, 3.2);
+    faceDetails.lineStyle(2, 0xa34868, 1);
+    faceDetails.beginPath(); faceDetails.arc(0, -69, 5.5, 0.18, Math.PI - 0.18, false); faceDetails.strokePath();
+
+    const characterDetails = this.add.graphics();
+    if (this.session.characterId === "princess" || this.session.characterId === "prince") {
+      characterDetails.fillStyle(0xffd94c, 1);
+      characterDetails.fillTriangle(-15, -98, -9, -116, -3, -98);
+      characterDetails.fillTriangle(-4, -98, 3, -119, 10, -98);
+      characterDetails.fillTriangle(7, -98, 14, -114, 19, -98);
+      characterDetails.fillRoundedRect(-16, -100, 37, 5, 2);
+      characterDetails.fillStyle(0xffffff, 0.95);
+      characterDetails.fillCircle(3, -109, 2);
+    } else if (this.session.characterId === "witch") {
+      characterDetails.fillStyle(0x33215e, 1);
+      characterDetails.fillTriangle(-24, -98, 0, -148, 25, -98);
+      characterDetails.fillStyle(0x9e5bdb, 1);
+      characterDetails.fillRoundedRect(-25, -101, 50, 8, 4);
+      characterDetails.fillStyle(0xffdf5d, 1);
+      characterDetails.fillCircle(0, -103, 4);
+    } else if (this.session.characterId === "unicorn") {
+      characterDetails.fillStyle(0xffd45a, 1);
+      characterDetails.fillTriangle(-4, -96, 0, -125, 5, -96);
+      characterDetails.lineStyle(3, 0xff88d3, 1);
+      characterDetails.lineBetween(-18, -88, -24, -102);
+      characterDetails.lineStyle(3, 0x6ce7f1, 1);
+      characterDetails.lineBetween(-12, -91, -17, -104);
+    } else if (this.session.characterId === "knight") {
+      characterDetails.fillStyle(0x98bbd2, 1);
+      characterDetails.fillRoundedRect(-21, -103, 42, 13, 6);
+      characterDetails.fillStyle(0xffd45b, 1);
+      characterDetails.fillRect(-2, -102, 4, 10);
+    } else if (this.session.characterId === "male-explorer") {
+      characterDetails.fillStyle(0xc18b41, 1);
+      characterDetails.fillEllipse(0, -101, 44, 10);
+      characterDetails.fillRoundedRect(-13, -114, 26, 15, 6);
+      characterDetails.fillStyle(0x6d472d, 1);
+      characterDetails.fillCircle(0, -112, 3);
+    } else if (this.session.characterId === "mermaid") {
+      characterDetails.fillStyle(0x48e0cd, 1);
+      characterDetails.fillEllipse(0, -100, 45, 10);
+      characterDetails.fillTriangle(-12, -96, -20, -108, -1, -98);
+      characterDetails.fillStyle(0xff9bd4, 1);
+      characterDetails.fillCircle(0, -101, 5);
+    }
+
+    const hairPin = this.add.text(-17, -106, appearance.hairstyle, {
+      fontFamily: "system-ui", fontSize: "12px"
+    }).setOrigin(0.5);
+    const accessory = this.add.text(20, -96, appearance.accessory, {
       fontFamily: "system-ui", fontSize: "13px"
     }).setOrigin(0.5);
-    const accessory = this.add.text(19, -89, appearance.accessory, {
-      fontFamily: "system-ui", fontSize: "13px"
-    }).setOrigin(0.5);
-
-    const playerChildren = [shadow, backHair, leftLeg, rightLeg, leftArm, rightArm, clothes, head, frontHair, faceDetails, hairPin, accessory];
+    const playerChildren = [shadow, backHair, leftLeg, rightLeg, leftArm, rightArm, clothes, head, frontHair, faceDetails, characterDetails, hairPin, accessory];
     this.player = this.add.container(120, this.groundY, playerChildren).setDepth(20);
   }
 
