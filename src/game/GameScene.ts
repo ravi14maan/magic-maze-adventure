@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { getCharacter, type CharacterId } from "../data/characters";
+import type { CharacterId } from "../data/characters";
 import type { ChallengeType, WorldDefinition } from "../data/worlds";
 import type { CharacterWardrobe } from "../data/profiles";
 
