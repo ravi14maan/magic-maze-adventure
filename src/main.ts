@@ -257,13 +257,39 @@ function renderPlay(): void {
       </div>
     </main>`;
   const session: MazeSession = { characterId: p.selectedCharacter, worldIndex: currentWorldIndex, levelNumber: currentLevel, challenge, world };
+  // Keep a direct reference to the exact scene instance. Phaser's SceneManager
+  // lookup can be unavailable while the first frame is booting; the controls
+  // must not depend on that lookup returning a scene immediately.
+  const scene = new GameScene(session, updateHud, completeLevel);
+  currentScene = scene;
   game = new Phaser.Game({
     type: Phaser.AUTO, parent: "maze-host", width: 420, height: 600, backgroundColor: world.sky,
-    scene: [new GameScene(session, updateHud, completeLevel)],
+    scene: [scene],
     scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH },
     render: { antialias: true, pixelArt: false, roundPixels: true }
   });
-  currentScene = game.scene.getScene("MazeScene") as GameScene;
+
+  // Use pointer events directly on the D-pad. This works for Android touch,
+  // mouse and stylus and avoids relying on a delegated click bubbling through
+  // the Phaser canvas or its parent.
+  const directions: Record<string, [number, number]> = {
+    up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0]
+  };
+  document.querySelectorAll<HTMLButtonElement>(".dpad [data-dir]").forEach((control) => {
+    const handler = (event: PointerEvent): void => {
+      event.preventDefault();
+      event.stopPropagation();
+      const delta = directions[control.dataset.dir ?? ""];
+      if (!delta) return;
+      if (!currentScene) {
+        notify("The maze is still loading. Please tap again.");
+        return;
+      }
+      currentScene.move(delta[0], delta[1]);
+    };
+    control.addEventListener("pointerdown", handler, { passive: false });
+    control.addEventListener("click", (event) => event.preventDefault());
+  });
 }
 
 function updateHud(data: MazeProgress): void {
@@ -372,9 +398,8 @@ app.addEventListener("click", (event) => {
     p.avatar.background=button.dataset.value??"#ffe0ef";updateProfile(store,p);render();
   } else if (action === "avatar-accessory" && p) {
     p.avatar.accessory=button.dataset.value??"✨";updateProfile(store,p);render();
-  } else if (action === "move" && currentScene) {
-    const dirs:Record<string,[number,number]>={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
-    const d=dirs[button.dataset.dir??""];if(d)currentScene.move(d[0],d[1]);
+  } else if (action === "move") {
+    // D-pad movement is handled by the direct pointerdown bindings in renderPlay().
   } else if (action === "pause") {
     if (game && !document.querySelector(".pause-overlay")) {
       game.scene.pause("MazeScene");
