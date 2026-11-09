@@ -295,7 +295,6 @@ function completeLevel(reward: MazeReward): void {
 
 function renderResult(): void {
   const r = currentReward ?? {coins:0,gems:0,stars:1,challenge:"classic" as const};
-  const nextLevel = currentLevel < 5 ? currentLevel+1 : 1;
   app!.innerHTML = `
     <main class="screen screen-center result-screen">
       <div class="result-confetti">🎉 ✨ 🌟</div>
