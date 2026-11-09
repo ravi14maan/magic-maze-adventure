@@ -122,6 +122,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   restart(): void {
+    if (!this.player) return;
     this.playerColumn = 1;
     this.playerRow = 1;
     this.completed = false;
