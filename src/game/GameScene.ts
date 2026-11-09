@@ -93,32 +93,31 @@ export class GameScene extends Phaser.Scene {
   }
 
   move(dx:number,dy:number):void {
-    if(this.complete || !this.player) return;
-    const x=this.px+dx,y=this.py+dy;
-    if(this.grid[y]?.[x]!==0) return;
+    if(this.complete || !this.player)return;
+    let x=this.px+dx,y=this.py+dy;
+    if(this.grid[y]?.[x]!==0)return;
     const key=keyOf(x,y),item=this.specials.get(key);
-    if(item==="door" && !this.hasKey){this.publish("🔒 Find the golden key to open this door!");return;}
-    if(item==="key"){this.hasKey=true;this.removeItem(key);this.publish("🗝️ Golden key found!");}
-    if(item==="coin"){this.coins++;this.removeItem(key);this.publish("🪙 Coin collected!");}
-    if(item==="gem"){this.gems++;this.removeItem(key);this.publish("💎 Gem collected!");}
-    if(item==="chest"){this.coins+=8;this.gems++;this.removeItem(key);this.publish("🎁 Treasure! +8 coins and +1 gem!");}
-    if(item==="trap" || item==="monster") {
-      if(Date.now()>this.invulnerableUntil) {
-        this.hearts--;this.invulnerableUntil=Date.now()+950;this.removeItem(key);
-        this.publish(item==="trap"?"⚡ Magic trap! One heart lost.":"👾 Monster bump! One heart lost.");
-        if(this.hearts<=0){this.hearts=5;this.px=START.x;this.py=START.y;this.publish("🧚 A fairy brought you back to the start. Keep going!");}
-      }
+    let message="Keep exploring!";
+    if(item==="door"&&!this.hasKey){this.publish("🔒 Find the golden key to open this door!");return;}
+    if(item==="key"){this.hasKey=true;this.removeItem(key);message="🗝️ Golden key found! The magic door will open.";}
+    else if(item==="coin"){this.coins++;this.removeItem(key);message="🪙 Coin collected!";}
+    else if(item==="gem"){this.gems++;this.removeItem(key);message="💎 Sparkling gem collected!";}
+    else if(item==="chest"){this.coins+=8;this.gems++;this.removeItem(key);message="🎁 Treasure chest! +8 coins and +1 gem!";}
+    else if((item==="trap"||item==="monster")&&Date.now()>this.invulnerableUntil){
+      this.hearts--;this.invulnerableUntil=Date.now()+950;this.removeItem(key);
+      message=item==="trap"?"⚡ Magic trap! One heart lost.":"👾 Monster bump! One heart lost.";
+      if(this.hearts<=0){this.hearts=5;x=START.x;y=START.y;message="🧚 A fairy brought you safely back to the start. Keep going!";}
     }
     this.px=x;this.py=y;this.player.setPosition(this.cellX(x),this.cellY(y));
-    if(x===EXIT.x && y===EXIT.y){
-      if((this.session.challenge==="key-door"||this.session.challenge==="tricky")&&!this.hasKey){this.publish("The portal needs the golden key!");return;}
+    if(x===EXIT.x&&y===EXIT.y){
+      if((this.session.challenge==="key-door"||this.session.challenge==="tricky")&&!this.hasKey){this.publish("The portal needs the golden key. Search the maze!");return;}
       this.complete=true;
       const stars=this.hearts>=4?3:this.hearts>=2?2:1;
-      this.onComplete({coins:25+this.coins*3+stars*5,gems:this.gems,stars,challenge:this.session.challenge});
       this.publish("🌟 Level complete! Portal reached!");
+      this.onComplete({coins:25+this.coins*3+stars*5,gems:this.gems,stars,challenge:this.session.challenge});
       return;
     }
-    this.publish("Keep exploring!");
+    this.publish(message);
   }
 
   private buildLevel():void {
@@ -158,6 +157,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawBoard():void {
+    this.tweens.killAll();
     this.children.removeAll(true);this.specialSprites.clear();
     const w=this.scale.width,h=this.scale.height;
     this.tile=Math.max(11,Math.min(36,(w-12)/COLS,(h-12)/ROWS));
