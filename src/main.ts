@@ -187,7 +187,12 @@ function renderLevels(): void {
 
 function renderHeroPortrait(id: CharacterId): string {
   const readableName = id.replaceAll("-", " ");
-  return '<img class="hero-art-portrait" src="assets/characters/' + id + '.webp" alt="' + readableName + '" loading="lazy">';
+  const rows: Record<CharacterId, number> = {
+    "normal-girl": 0, "normal-boy": 1, unicorn: 2, witch: 3,
+    princess: 4, prince: 4, "male-explorer": 1, knight: 1, mermaid: 5
+  };
+  const row = rows[id] ?? 0;
+  return '<span class="hero-art-portrait" role="img" aria-label="' + readableName + '" style="--hero-art-row:' + (row * 20) + '%"></span>';
 }
 
 function renderCharacters(): void {
