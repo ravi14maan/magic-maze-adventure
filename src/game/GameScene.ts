@@ -34,6 +34,17 @@ const SUPPLIED_ART_BY_CHARACTER: Record<CharacterId, CharacterId> = {
   knight: "normal-boy",
   mermaid: "mermaid"
 };
+const HERO_ATLAS_ROW: Record<CharacterId, number> = {
+  "normal-girl": 0,
+  "normal-boy": 1,
+  unicorn: 2,
+  witch: 3,
+  princess: 4,
+  prince: 4,
+  "male-explorer": 1,
+  knight: 1,
+  mermaid: 5
+};
 
 export class GameScene extends Phaser.Scene {
   private readonly session: MazeSession;
@@ -60,7 +71,9 @@ export class GameScene extends Phaser.Scene {
   private overlayElement?: HTMLDivElement;
   private autoWalkEnabled = false;
   private walkCycle = 0;
-  private heroImage?: Phaser.GameObjects.Image;
+  private heroImage?: Phaser.GameObjects.Sprite;
+  private heroAnimationKey = "";
+  private heroIdleFrame = 0;
   private playerShadow?: Phaser.GameObjects.Ellipse;
   private heroBaseScale = 1;
   private gapZones: Gap[] = [];
@@ -82,9 +95,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload(): void {
-    for (const id of SUPPLIED_HERO_IDS) {
-      this.load.image("hero-" + id, "assets/characters/" + id + ".webp");
-    }
+    this.load.spritesheet("hero-run-atlas", "assets/characters/hero-run-atlas.webp", {
+      frameWidth: 128,
+      frameHeight: 192
+    });
   }
 
   create(): void {
@@ -130,13 +144,8 @@ export class GameScene extends Phaser.Scene {
   toggleAutoWalk(): boolean {
     if (this.complete || this.challengeOpen || !this.player) return false;
     const waitingGap = this.gapPrompted.some((shown, i) => shown && !this.gapActionStarted[i]);
-    const waitingObstacle = this.obstacles.find(o => o.prompted && !o.actionStarted && !o.handled);
-    if (!this.autoWalkEnabled && (waitingGap || waitingObstacle)) {
-      this.publish(waitingGap
-        ? "🌊 Gap ahead! Tap ▲ JUMP to continue."
-        : waitingObstacle?.kind === "branch"
-          ? "🌿 Low branch ahead! Tap ▼ DUCK to continue."
-          : "⚠️ Obstacle ahead! Tap ▲ JUMP to continue.");
+    if (!this.autoWalkEnabled && waitingGap) {
+      this.publish("🌊 Gap ahead! Tap ▲ JUMP to continue.");
       return false;
     }
     this.autoWalkEnabled = !this.autoWalkEnabled;
@@ -222,6 +231,8 @@ export class GameScene extends Phaser.Scene {
     if (this.jumping) {
       const jumpHeight = Phaser.Math.Clamp((this.groundY - this.player.y) / 190, 0, 1);
       if (this.heroImage) {
+        this.heroImage.anims.stop();
+        this.heroImage.setFrame(this.heroIdleFrame + 3);
         this.heroImage.setAngle(-7 * this.facing * jumpHeight);
         this.heroImage.setScale(this.heroBaseScale * (1 - jumpHeight * 0.07), this.heroBaseScale * (1 + jumpHeight * 0.1));
       }
@@ -240,6 +251,8 @@ export class GameScene extends Phaser.Scene {
         this.player.setScale(this.facing, 1);
         this.player.setAngle(0);
         if (this.heroImage) {
+          this.heroImage.anims.stop();
+          this.heroImage.setFrame(this.heroIdleFrame);
           this.heroImage.setAngle(0);
           this.heroImage.setScale(this.heroBaseScale);
           this.heroImage.y = 0;
@@ -314,10 +327,11 @@ export class GameScene extends Phaser.Scene {
       this.player.y = this.groundY + bounce * 3;
       this.player.setAngle(stride * 2.3);
       if (this.heroImage) {
-        this.heroImage.setAngle(stride * 4.2);
-        const stretch = Math.sin(this.walkCycle * 2) * 0.035;
+        if (this.heroAnimationKey && !this.heroImage.anims.isPlaying) this.heroImage.play(this.heroAnimationKey);
+        this.heroImage.setAngle(stride * 2.2);
+        const stretch = Math.sin(this.walkCycle * 2) * 0.018;
         this.heroImage.setScale(this.heroBaseScale * (1 + stretch), this.heroBaseScale * (1 - stretch * 0.72));
-        this.heroImage.y = -bounce * 3.5;
+        this.heroImage.y = -bounce * 4.5;
       }
       if (this.playerShadow) {
         this.playerShadow.setScale(1 - bounce * 0.1, 1);
@@ -328,6 +342,8 @@ export class GameScene extends Phaser.Scene {
       this.leftArm.angle = 0; this.rightArm.angle = 0;
       this.player.setAngle(0);
       if (this.heroImage) {
+        this.heroImage.anims.stop();
+        this.heroImage.setFrame(this.heroIdleFrame);
         this.heroImage.setAngle(0);
         this.heroImage.setScale(this.heroBaseScale);
         this.heroImage.y = 0;
@@ -668,18 +684,29 @@ export class GameScene extends Phaser.Scene {
 
   private drawHero(): void {
     const suppliedArtId = SUPPLIED_ART_BY_CHARACTER[this.session.characterId];
-    const key = "hero-" + suppliedArtId;
+    const row = HERO_ATLAS_ROW[this.session.characterId];
+    const firstFrame = row * 4;
+    const key = "hero-run-atlas";
     if (this.textures.exists(key)) {
+      const animationKey = "hero-run-" + suppliedArtId;
+      if (!this.anims.exists(animationKey)) {
+        this.anims.create({
+          key: animationKey,
+          frames: this.anims.generateFrameNumbers(key, { start: firstFrame, end: firstFrame + 2 }),
+          frameRate: 9,
+          repeat: -1
+        });
+      }
       const shadow = this.add.ellipse(0, -2, 66, 15, 0x001b3c, 0.38);
-      const heroImage = this.add.image(0, 0, key).setOrigin(0.5, 1);
-      const scale = Math.min(154 / heroImage.width, 218 / heroImage.height);
+      const heroImage = this.add.sprite(0, 0, key, firstFrame).setOrigin(0.5, 1);
+      const scale = Math.min(154 / 128, 218 / 192);
       heroImage.setScale(scale);
       heroImage.setPosition(0, 0);
       this.heroImage = heroImage;
+      this.heroAnimationKey = animationKey;
+      this.heroIdleFrame = firstFrame;
       this.heroBaseScale = scale;
       this.playerShadow = shadow;
-      // The submitted artwork is the playable character; squash, lean, run bounce
-      // and jump/landing motion animate the supplied art without replacing it.
       this.leftLeg = this.add.graphics();
       this.rightLeg = this.add.graphics();
       this.leftArm = this.add.graphics();
@@ -907,24 +934,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Stop at each obstacle rather than letting the player collide repeatedly.
-    const nextObstacle = this.obstacles.find(o => !o.handled && o.x > this.player.x);
-    if (nextObstacle) {
-      if (nextObstacle.prompted && !nextObstacle.actionStarted) {
-        this.autoWalkEnabled = false;
-        return;
-      }
-      if (!nextObstacle.prompted && nextX >= nextObstacle.x - 92) {
-        this.player.x = Math.max(this.player.x, nextObstacle.x - 92);
-        nextObstacle.prompted = true;
-        this.autoWalkEnabled = false;
-        const prompt = nextObstacle.kind === "branch"
-          ? "🌿 Low branch ahead! Tap ▼ DUCK once. Walking will continue underneath."
-          : "⚠️ Obstacle ahead! Tap ▲ JUMP once to clear it. Walking will continue automatically.";
-        this.publish(prompt);
-        return;
-      }
-    }
+    // Obstacles do not stop the runner. The player chooses when to jump or duck.
 
     if (!this.challengeCleared && nextX >= STATION_X - 70) {
       this.player.x = STATION_X - 70;
@@ -945,33 +955,60 @@ export class GameScene extends Phaser.Scene {
   private loseHeart(message: string): void {
     this.autoWalkEnabled = false;
     const hitObstacle = this.obstacles.find(o => Math.abs(o.x - this.player.x) < 55 && !o.handled);
-    let respawnX = this.player.x - 120;
+    const collisionX = this.player.x;
+    let respawnX = Math.max(this.checkpointX, collisionX - 72);
     if (hitObstacle) {
-      hitObstacle.prompted = true;
+      // Do not lock the player into an automatic jump prompt. She can choose
+      // when to run again and when to tap jump.
+      hitObstacle.prompted = false;
       hitObstacle.actionStarted = false;
-      respawnX = hitObstacle.x - 92;
+      respawnX = Math.max(this.checkpointX, Math.min(collisionX - 58, hitObstacle.x - 88));
+      if (hitObstacle.kind === "rock") {
+        message = "🪨 Bump! The rock pushed you back a little. Tap ▶ to run again and ▲ to jump over it.";
+      }
     }
     const fallenGap = this.gapZones.findIndex(g => this.player.x > g.left - 20 && this.player.x < g.right + 20);
     if (fallenGap >= 0) {
       this.gapPrompted[fallenGap] = true;
       this.gapActionStarted[fallenGap] = false;
-      respawnX = this.gapZones[fallenGap]!.left - 65;
+      respawnX = Math.max(this.checkpointX, this.gapZones[fallenGap]!.left - 65);
     }
     this.hearts--;
     if (this.hearts <= 0) {
       this.hearts = 5;
-      message = "🧚 A fairy helped you at the checkpoint. Try the obstacle again!";
+      message = "🧚 A fairy helped you at the checkpoint. Try that jump again!";
     }
     this.tweens.killTweensOf(this.player);
     this.tweens.killTweensOf([this.leftLeg, this.rightLeg, this.leftArm, this.rightArm]);
-    // Respawn just behind the hazard instead of rewinding a long section.
-    this.player.setPosition(Math.max(this.checkpointX, respawnX), this.groundY);
-    this.player.setScale(1, 1);
-    this.player.setAngle(0);
+    this.player.setPosition(collisionX, this.groundY);
+    this.player.setScale(this.facing, 1);
+    this.player.setAngle(5);
+    this.player.setAlpha(1);
     this.autoWalkEnabled = false;
     this.jumping = false;
     this.jumpVelocity = 0;
     this.duckUntil = 0;
+    if (this.heroImage) {
+      this.heroImage.anims.stop();
+      this.heroImage.setFrame(this.heroIdleFrame);
+      this.heroImage.setScale(this.heroBaseScale);
+      this.heroImage.setAngle(0);
+      this.heroImage.y = 0;
+    }
+    this.cameras.main.shake(110, 0.0025);
+    this.tweens.add({
+      targets: this.player,
+      x: respawnX,
+      angle: 0,
+      duration: 230,
+      ease: "Cubic.easeOut",
+      onComplete: () => {
+        if (this.player && this.player.active) {
+          this.player.setAngle(0);
+          this.player.setAlpha(1);
+        }
+      }
+    });
     this.publish(message);
   }
 
