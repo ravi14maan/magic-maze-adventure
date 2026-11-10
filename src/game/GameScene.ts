@@ -22,7 +22,6 @@ interface Gap { left: number; right: number }
 const WORLD_LENGTH = 3100;
 const STATION_X = 1500;
 const FINISH_X = 2940;
-const SUPPLIED_HERO_IDS: CharacterId[] = ["normal-girl", "normal-boy", "unicorn", "witch", "princess", "mermaid"];
 const SUPPLIED_ART_BY_CHARACTER: Record<CharacterId, CharacterId> = {
   "normal-girl": "normal-girl",
   "normal-boy": "normal-boy",
@@ -144,11 +143,6 @@ export class GameScene extends Phaser.Scene {
 
   toggleAutoWalk(): boolean {
     if (this.complete || this.challengeOpen || !this.player) return false;
-    const waitingGap = this.gapPrompted.some((shown, i) => shown && !this.gapActionStarted[i]);
-    if (!this.autoWalkEnabled && waitingGap) {
-      this.publish("🌊 Gap ahead! Tap ▲ JUMP to continue.");
-      return false;
-    }
     this.autoWalkEnabled = !this.autoWalkEnabled;
     if (this.autoWalkEnabled) {
       this.facing = 1;
@@ -174,11 +168,6 @@ export class GameScene extends Phaser.Scene {
         const pendingObstacle = this.obstacles.find(o => o.prompted && !o.actionStarted && !o.handled);
         if (pendingObstacle) {
           pendingObstacle.actionStarted = true;
-          this.autoWalkEnabled = true;
-        }
-        const pendingGap = this.gapZones.findIndex((_gap, i) => this.gapPrompted[i] && !this.gapActionStarted[i]);
-        if (pendingGap >= 0) {
-          this.gapActionStarted[pendingGap] = true;
           this.autoWalkEnabled = true;
         }
         this.publish("⬆️ Jump! Keep moving to clear the obstacle.");
@@ -921,27 +910,11 @@ export class GameScene extends Phaser.Scene {
 
   private advanceAutoWalk(dt: number): void {
     if (!this.autoWalkEnabled || !this.player || this.challengeOpen || this.complete) return;
-    const walkSpeed = 100; // deliberately slower so there is time to react
+    const walkSpeed = 100;
     const nextX = Math.min(FINISH_X + 30, this.player.x + walkSpeed * dt);
 
-    // Stop before gaps and ask for one jump. The walk toggle is re-enabled by the jump tap.
-    for (let i = 0; i < this.gapZones.length; i++) {
-      const gap = this.gapZones[i]!;
-      if (this.gapPrompted[i] && !this.gapActionStarted[i]) {
-        this.autoWalkEnabled = false;
-        return;
-      }
-      if (!this.gapPrompted[i] && this.player.x < gap.left && nextX >= gap.left - 65) {
-        this.player.x = Math.max(this.player.x, gap.left - 65);
-        this.gapPrompted[i] = true;
-        this.autoWalkEnabled = false;
-        this.publish("🌊 A gap is coming! Tap ▲ JUMP once. Walking will continue after your jump.");
-        return;
-      }
-    }
-
-    // Obstacles do not stop the runner. The player chooses when to jump or duck.
-
+    // Keep moving past rocks and gaps. Jumping is entirely player-controlled;
+    // a missed jump causes a fall/recoil instead of an automatic stop prompt.
     if (!this.challengeCleared && nextX >= STATION_X - 70) {
       this.player.x = STATION_X - 70;
       this.autoWalkEnabled = false;
@@ -962,7 +935,7 @@ export class GameScene extends Phaser.Scene {
     const hitObstacle = this.obstacles.find(o => Math.abs(o.x - this.player.x) < 55 && !o.handled && !o.bumped);
     const collisionX = this.player.x;
     let respawnX = Math.max(this.checkpointX, collisionX - 72);
-    const resumeRunningAfterBump = Boolean(hitObstacle);
+    let resumeRunningAfterBump = Boolean(hitObstacle);
 
     if (hitObstacle) {
       // The runner never stops in front of a rock. A missed jump causes a
@@ -982,9 +955,11 @@ export class GameScene extends Phaser.Scene {
 
     const fallenGap = this.gapZones.findIndex(g => this.player.x > g.left - 20 && this.player.x < g.right + 20);
     if (fallenGap >= 0) {
-      this.gapPrompted[fallenGap] = true;
+      this.gapPrompted[fallenGap] = false;
       this.gapActionStarted[fallenGap] = false;
       respawnX = Math.max(this.checkpointX, this.gapZones[fallenGap]!.left - 65);
+      resumeRunningAfterBump = true;
+      message = "🌊 Splash! You fell into the gap and bounced back. Running continues — tap ▲ to jump across!";
     }
 
     this.hearts--;
