@@ -282,3 +282,16 @@ input:focus{border-color:#b48cce;box-shadow:0 0 0 3px #eadcf4}
   font-weight:1000;text-align:center;
 }
 .adventure-challenge-card .challenge-countdown{font-size:12px}
+
+
+/* The six player-supplied characters are transparent sprite cells, not boxed photos. */
+.hero-portrait .hero-art-portrait{
+  width:auto;height:100%;max-width:100%;max-height:100%;aspect-ratio:2/3;
+  margin:0 auto;display:block;flex:none;
+  background-image:url("assets/characters/hero-run-atlas.webp");
+  background-repeat:no-repeat;
+  background-size:400% 600%;
+  background-position:0 var(--hero-art-row,0%);
+  filter:drop-shadow(0 5px 4px rgba(10,35,65,.2));
+}
+.hero-portrait:after{pointer-events:none}
