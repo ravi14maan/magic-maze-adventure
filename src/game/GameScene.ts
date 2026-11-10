@@ -15,7 +15,7 @@ export interface MazeProgress { hearts: number; coins: number; gems: number; has
 export interface MazeReward { coins: number; gems: number; stars: number; challenge: ChallengeType }
 
 type ObstacleKind = "log" | "rock" | "branch" | "monster";
-interface Obstacle { x: number; kind: ObstacleKind; sprite: Phaser.GameObjects.Text; handled: boolean; prompted: boolean; actionStarted: boolean }
+interface Obstacle { x: number; kind: ObstacleKind; sprite: Phaser.GameObjects.Text; handled: boolean; prompted: boolean; actionStarted: boolean; bumped: boolean }
 interface Pickup { x: number; y: number; kind: "coin" | "gem"; sprite: Phaser.GameObjects.Text; collected: boolean }
 interface Gap { left: number; right: number }
 
@@ -74,6 +74,7 @@ export class GameScene extends Phaser.Scene {
   private heroImage?: Phaser.GameObjects.Sprite;
   private heroAnimationKey = "";
   private heroIdleFrame = 0;
+  private heroJumpFrame = 3;
   private playerShadow?: Phaser.GameObjects.Ellipse;
   private heroBaseScale = 1;
   private gapZones: Gap[] = [];
@@ -232,7 +233,7 @@ export class GameScene extends Phaser.Scene {
       const jumpHeight = Phaser.Math.Clamp((this.groundY - this.player.y) / 190, 0, 1);
       if (this.heroImage) {
         this.heroImage.anims.stop();
-        this.heroImage.setFrame(this.heroIdleFrame);
+        this.heroImage.setFrame(this.heroJumpFrame);
         this.heroImage.setAngle(-7 * this.facing * jumpHeight);
         this.heroImage.setScale(this.heroBaseScale * (1 - jumpHeight * 0.07), this.heroBaseScale * (1 + jumpHeight * 0.1));
       }
@@ -294,8 +295,12 @@ export class GameScene extends Phaser.Scene {
         obstacle.handled = true;
         obstacle.prompted = false;
         obstacle.actionStarted = false;
+        obstacle.bumped = false;
         continue;
       }
+      // Once a collision has caused a recoil, don't repeatedly damage the
+      // player as the auto-run continues past that same obstacle.
+      if (obstacle.bumped) continue;
       if (Math.abs(this.player.x - obstacle.x) < 29) {
         const airborne = this.player.y < this.groundY - 58;
         const ducking = this.time.now < this.duckUntil;
@@ -640,7 +645,7 @@ export class GameScene extends Phaser.Scene {
       }).setOrigin(0.5);
       if (kind === "rock") this.tweens.add({ targets: sprite, x: x + 22 + difficulty.rank * 2, duration: Math.max(260, 620 / difficulty.obstacleSpeed), yoyo: true, repeat: -1 });
       if (kind === "monster") this.tweens.add({ targets: sprite, y: y - 11 - difficulty.rank, angle: 7, duration: Math.max(300, 680 / difficulty.obstacleSpeed), yoyo: true, repeat: -1 });
-      this.obstacles.push({ x, kind, sprite, handled: false, prompted: false, actionStarted: false });
+      this.obstacles.push({ x, kind, sprite, handled: false, prompted: false, actionStarted: false, bumped: false });
     }
 
     for (const gap of this.gapZones) {
@@ -685,7 +690,7 @@ export class GameScene extends Phaser.Scene {
   private drawHero(): void {
     const suppliedArtId = SUPPLIED_ART_BY_CHARACTER[this.session.characterId];
     const row = HERO_ATLAS_ROW[this.session.characterId];
-    const firstFrame = row * 3;
+    const firstFrame = row * 4;
     const key = "hero-run-atlas";
     if (this.textures.exists(key)) {
       const animationKey = "hero-run-" + suppliedArtId;
@@ -705,6 +710,7 @@ export class GameScene extends Phaser.Scene {
       this.heroImage = heroImage;
       this.heroAnimationKey = animationKey;
       this.heroIdleFrame = firstFrame;
+      this.heroJumpFrame = firstFrame + 3;
       this.heroBaseScale = scale;
       this.playerShadow = shadow;
       this.leftLeg = this.add.graphics();
@@ -953,31 +959,40 @@ export class GameScene extends Phaser.Scene {
   }
 
   private loseHeart(message: string): void {
-    this.autoWalkEnabled = false;
-    const hitObstacle = this.obstacles.find(o => Math.abs(o.x - this.player.x) < 55 && !o.handled);
+    const hitObstacle = this.obstacles.find(o => Math.abs(o.x - this.player.x) < 55 && !o.handled && !o.bumped);
     const collisionX = this.player.x;
     let respawnX = Math.max(this.checkpointX, collisionX - 72);
+    const resumeRunningAfterBump = Boolean(hitObstacle);
+
     if (hitObstacle) {
-      // Do not lock the player into an automatic jump prompt. She can choose
-      // when to run again and when to tap jump.
+      // The runner never stops in front of a rock. A missed jump causes a
+      // short backward bump, then the auto-run continues past this obstacle.
       hitObstacle.prompted = false;
       hitObstacle.actionStarted = false;
-      respawnX = Math.max(this.checkpointX, Math.min(collisionX - 58, hitObstacle.x - 88));
+      hitObstacle.bumped = true;
+      respawnX = Math.max(this.checkpointX, Math.min(collisionX - 82, hitObstacle.x - 88));
       if (hitObstacle.kind === "rock") {
-        message = "🪨 Bump! The rock pushed you back a little. Tap ▶ to run again and ▲ to jump over it.";
+        message = "🪨 Bump! The rock pushed you back a little. Running continues — tap ▲ next time to jump over it!";
+      } else if (hitObstacle.kind === "branch") {
+        message = "🌿 Bump! Duck under the next branch with ▼. Running continues!";
+      } else {
+        message = "💥 Bump! You were pushed back a little. Running continues — tap ▲ before the next obstacle!";
       }
     }
+
     const fallenGap = this.gapZones.findIndex(g => this.player.x > g.left - 20 && this.player.x < g.right + 20);
     if (fallenGap >= 0) {
       this.gapPrompted[fallenGap] = true;
       this.gapActionStarted[fallenGap] = false;
       respawnX = Math.max(this.checkpointX, this.gapZones[fallenGap]!.left - 65);
     }
+
     this.hearts--;
     if (this.hearts <= 0) {
       this.hearts = 5;
       message = "🧚 A fairy helped you at the checkpoint. Try that jump again!";
     }
+
     this.tweens.killTweensOf(this.player);
     this.tweens.killTweensOf([this.leftLeg, this.rightLeg, this.leftArm, this.rightArm]);
     this.player.setPosition(collisionX, this.groundY);
@@ -1006,6 +1021,13 @@ export class GameScene extends Phaser.Scene {
         if (this.player && this.player.active) {
           this.player.setAngle(0);
           this.player.setAlpha(1);
+          if (resumeRunningAfterBump && hitObstacle) {
+            this.facing = 1;
+            this.autoWalkEnabled = true;
+            this.publish("▶️ Running again! Tap ▲ whenever you want to jump.");
+          } else {
+            this.publish(message);
+          }
         }
       }
     });
