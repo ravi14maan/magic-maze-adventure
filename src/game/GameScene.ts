@@ -232,7 +232,7 @@ export class GameScene extends Phaser.Scene {
       const jumpHeight = Phaser.Math.Clamp((this.groundY - this.player.y) / 190, 0, 1);
       if (this.heroImage) {
         this.heroImage.anims.stop();
-        this.heroImage.setFrame(this.heroIdleFrame + 3);
+        this.heroImage.setFrame(this.heroIdleFrame);
         this.heroImage.setAngle(-7 * this.facing * jumpHeight);
         this.heroImage.setScale(this.heroBaseScale * (1 - jumpHeight * 0.07), this.heroBaseScale * (1 + jumpHeight * 0.1));
       }
@@ -685,7 +685,7 @@ export class GameScene extends Phaser.Scene {
   private drawHero(): void {
     const suppliedArtId = SUPPLIED_ART_BY_CHARACTER[this.session.characterId];
     const row = HERO_ATLAS_ROW[this.session.characterId];
-    const firstFrame = row * 4;
+    const firstFrame = row * 3;
     const key = "hero-run-atlas";
     if (this.textures.exists(key)) {
       const animationKey = "hero-run-" + suppliedArtId;
