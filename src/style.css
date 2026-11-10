@@ -290,7 +290,7 @@ input:focus{border-color:#b48cce;box-shadow:0 0 0 3px #eadcf4}
   margin:0 auto;display:block;flex:none;
   background-image:url("assets/characters/hero-run-atlas.webp");
   background-repeat:no-repeat;
-  background-size:400% 600%;
+  background-size:300% 600%;
   background-position:0 var(--hero-art-row,0%);
   filter:drop-shadow(0 5px 4px rgba(10,35,65,.2));
 }
