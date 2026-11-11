@@ -770,7 +770,6 @@ export class GameScene extends Phaser.Scene {
       ctx: CanvasRenderingContext2D,
       base: HTMLCanvasElement,
       x: number,
-      y: number,
       row: number,
       frame: number,
       id: CharacterId
@@ -839,12 +838,26 @@ export class GameScene extends Phaser.Scene {
       if (!source || !source.width || !source.height) return;
       const base = makeTransparent(source, id);
       for (let frame = 0; frame < 4; frame++) {
-        drawPose(atlasContext, base, frame * frameWidth, 0, row, frame, id);
+        drawPose(atlasContext, base, frame * frameWidth, row, frame, id);
       }
     });
 
     if (this.textures.exists("hero-run-atlas")) this.textures.remove("hero-run-atlas");
-    this.textures.addSpriteSheet("hero-run-atlas", atlas, { frameWidth, frameHeight });
+    const atlasTexture = this.textures.addCanvas("hero-run-atlas", atlas);
+    if (!atlasTexture) return;
+    for (let row = 0; row < ids.length; row++) {
+      for (let frame = 0; frame < 4; frame++) {
+        const frameIndex = row * 4 + frame;
+        atlasTexture.add(
+          String(frameIndex),
+          0,
+          frame * frameWidth,
+          row * frameHeight,
+          frameWidth,
+          frameHeight
+        );
+      }
+    }
   }
 
   private drawHero(): void {
