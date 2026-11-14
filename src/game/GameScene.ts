@@ -401,7 +401,139 @@ export class GameScene extends Phaser.Scene {
   private drawWorldLandmarks(height: number): void {
     const index = this.session.worldIndex;
     const g = this.add.graphics().setScrollFactor(0.3).setDepth(-2);
-    if (index === 10) {
+    if (index === 1) {
+      // Candy Kingdom: giant lollipops, candy canes and gumdrop hills.
+      const candy = [0xff5d9e, 0xffcd4f, 0x55d8ca, 0xa979e8];
+      for (let i = 0; i < 12; i++) {
+        const x = 125 + i * 260;
+        const y = height * (0.47 + (i % 3) * 0.055);
+        const colour = candy[i % candy.length]!;
+        g.fillStyle(colour, 0.92); g.fillCircle(x, y, 48 + (i % 2) * 13);
+        g.lineStyle(8, 0xffffff, 0.82); g.strokeCircle(x, y, 42 + (i % 2) * 13);
+        g.lineStyle(17, 0xfff0f5, 0.9); g.lineBetween(x, y + 40, x + 14, height * 0.88);
+        g.lineStyle(7, 0xff82b8, 0.8); g.lineBetween(x - 25, y - 22, x + 25, y + 22);
+      }
+      g.fillStyle(0xffe4f4, 0.3);
+      for (let i = 0; i < 12; i++) g.fillEllipse(i * 310, height * 0.82, 300, 95);
+    } else if (index === 2) {
+      // Enchanted Forest: tall trunks, layered canopies and glowing mushrooms.
+      for (let i = 0; i < 15; i++) {
+        const x = 85 + i * 225;
+        const base = height * 0.88;
+        g.fillStyle(0x594b42, 0.88); g.fillRoundedRect(x - 16, base - 210 - (i % 3) * 36, 34, 230, 12);
+        const leaves = [0x2cae78, 0x49c98b, 0x65ce7c];
+        g.fillStyle(leaves[i % 3]!, 0.82);
+        g.fillCircle(x, base - 220 - (i % 3) * 36, 75);
+        g.fillCircle(x - 48, base - 185 - (i % 2) * 20, 53);
+        g.fillCircle(x + 49, base - 187, 55);
+      }
+      for (let i = 0; i < 14; i++) {
+        const x = 65 + i * 245;
+        g.fillStyle(0xff8dad, 0.95); g.fillEllipse(x, height * 0.86, 36, 17);
+        g.fillStyle(0xfff4e4, 0.95); g.fillRoundedRect(x - 7, height * 0.86, 14, 34, 7);
+      }
+    } else if (index === 3) {
+      // Scary Cave: stalactites, stone shelves and glowing cave crystals.
+      g.fillStyle(0x241f45, 0.75);
+      for (let i = 0; i < 22; i++) {
+        const x = i * 165;
+        const h = 65 + (i % 5) * 25;
+        g.fillTriangle(x - 30, 0, x + 30, 0, x, h);
+        g.fillTriangle(x - 25, height, x + 25, height, x, height - h * 0.8);
+      }
+      const glow = [0x77efff, 0xc38aff, 0xff8bc8];
+      for (let i = 0; i < 18; i++) {
+        const x = 100 + i * 205;
+        const y = height * (0.58 + (i % 3) * 0.08);
+        const colour = glow[i % 3]!;
+        g.fillStyle(colour, 0.2); g.fillCircle(x, y, 47);
+        g.fillStyle(colour, 0.92);
+        g.fillTriangle(x, y - 44, x + 26, y, x, y + 55);
+        g.fillTriangle(x, y - 44, x - 26, y, x, y + 55);
+      }
+    } else if (index === 4) {
+      // Frozen Kingdom: blue icebergs and snow banks.
+      for (let i = 0; i < 13; i++) {
+        const x = 90 + i * 270;
+        const y = height * (0.76 + (i % 2) * 0.04);
+        g.fillStyle(0x82d9fa, 0.8);
+        g.fillTriangle(x - 70, y, x, y - 210 - (i % 3) * 35, x + 77, y);
+        g.fillStyle(0xe8fbff, 0.82);
+        g.fillTriangle(x - 20, y - 90, x, y - 210 - (i % 3) * 35, x + 28, y - 88);
+      }
+      g.fillStyle(0xe8fbff, 0.32);
+      for (let i = 0; i < 22; i++) g.fillCircle(70 + i * 150, 90 + (i % 4) * 70, 5 + (i % 3));
+    } else if (index === 5) {
+      // Space: ringed planets, moons and tiny star clusters.
+      const planets = [[240, 250, 92, 0x9c78df], [820, 190, 64, 0x53d4d4], [1400, 300, 112, 0xf08cae], [1950, 170, 58, 0xffcf66]];
+      for (const [x, y, r, colour] of planets) {
+        g.fillStyle(colour, 0.88); g.fillCircle(x!, y!, r!);
+        g.lineStyle(10, 0xffffff, 0.42); g.strokeCircle(x!, y!, r! * 0.74);
+        g.lineStyle(8, 0xffffff, 0.55); g.beginPath(); g.ellipse(x!, y!, r! * 1.8, r! * 0.48, -0.2, 0, Math.PI * 2); g.strokePath();
+      }
+      g.fillStyle(0xffffff, 0.8);
+      for (let i = 0; i < 35; i++) {
+        const x = (i * 197) % WORLD_LENGTH;
+        const y = 48 + (i * 71) % Math.max(100, height * 0.64);
+        g.fillCircle(x, y, 2 + (i % 3));
+      }
+    } else if (index === 6) {
+      // Magic Castle: towers, battlements, glowing windows and royal flags.
+      for (let i = 0; i < 5; i++) {
+        const x = 220 + i * 620;
+        const base = height * 0.82;
+        const h = 210 + (i % 3) * 45;
+        g.fillStyle(0x725a91, 0.86); g.fillRoundedRect(x, base - h, 130, h, 14);
+        g.fillStyle(0xbca3df, 0.92); g.fillTriangle(x - 16, base - h, x + 65, base - h - 110, x + 146, base - h);
+        g.fillStyle(0x3c326d, 0.9);
+        for (let w = 0; w < 3; w++) g.fillRoundedRect(x + 20 + w * 37, base - 88, 19, 45, 9);
+        g.fillStyle(0xffda72, 0.92); g.fillRect(x + 64, base - h - 160, 5, 54);
+        g.fillStyle(0xff6caa, 0.95); g.fillTriangle(x + 68, base - h - 158, x + 123, base - h - 137, x + 68, base - h - 119);
+      }
+    } else if (index === 7) {
+      // Ghost World: moon glow, haunted turrets and fog banks.
+      g.fillStyle(0xffefbd, 0.82); g.fillCircle(1430, height * 0.18, 105);
+      g.fillStyle(0x4d4a87, 0.8);
+      for (let i = 0; i < 9; i++) {
+        const x = 150 + i * 360;
+        const base = height * 0.84;
+        g.fillRoundedRect(x, base - 185 - (i % 3) * 30, 110, 185, 8);
+        g.fillTriangle(x - 10, base - 185 - (i % 3) * 30, x + 55, base - 250 - (i % 3) * 30, x + 120, base - 185 - (i % 3) * 30);
+        g.fillStyle(0x9ed6ef, 0.75); g.fillRoundedRect(x + 26, base - 110, 18, 24, 9); g.fillRoundedRect(x + 67, base - 110, 18, 24, 9);
+        g.fillStyle(0x4d4a87, 0.8);
+      }
+      g.fillStyle(0xc9d4ff, 0.2);
+      for (let i = 0; i < 10; i++) g.fillEllipse(i * 300, height * 0.8, 280, 38);
+    } else if (index === 8) {
+      // Fairy World: oversized flowers, glowing petals and floating light motes.
+      const petal = [0xff8ec2, 0xffcf73, 0xb98bff, 0x76ddd1];
+      for (let i = 0; i < 16; i++) {
+        const x = 100 + i * 220;
+        const y = height * (0.56 + (i % 3) * 0.1);
+        const colour = petal[i % petal.length]!;
+        g.lineStyle(8, 0x3b9b7f, 0.75); g.lineBetween(x, y + 8, x - 3, height * 0.92);
+        g.fillStyle(colour, 0.82);
+        for (let p = 0; p < 5; p++) {
+          const angle = p * Math.PI * 2 / 5;
+          g.fillEllipse(x + Math.cos(angle) * 28, y + Math.sin(angle) * 28, 31, 20);
+        }
+        g.fillStyle(0xffed8d, 0.95); g.fillCircle(x, y, 12);
+      }
+    } else if (index === 9) {
+      // Crystal Cave: translucent crystal clusters with bright cut facets.
+      for (let i = 0; i < 18; i++) {
+        const x = 80 + i * 210;
+        const y = height * (0.78 + (i % 2) * 0.045);
+        const h = 110 + (i % 4) * 27;
+        const colour = i % 2 ? 0x61d8ff : 0xa888ff;
+        g.fillStyle(colour, 0.78);
+        g.fillTriangle(x - 33, y, x, y - h, x + 39, y);
+        g.fillStyle(0xeaffff, 0.82);
+        g.fillTriangle(x, y - h, x + 9, y - 8, x - 6, y - 11);
+        g.fillStyle(0xffffff, 0.42);
+        g.lineStyle(3, 0xffffff, 0.55); g.lineBetween(x, y - h + 14, x - 10, y - 12);
+      }
+    } else if (index === 10) {
       // Dragon Valley: layered mountains, waterfall and a distant dragon silhouette.
       g.fillStyle(0x315c66, 0.82);
       g.fillTriangle(0, height * 0.78, 390, height * 0.16, 760, height * 0.78);
