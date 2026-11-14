@@ -32,7 +32,11 @@ const SUPPLIED_ART_BY_CHARACTER: Record<CharacterId, CharacterId> = {
   prince: "princess",
   "male-explorer": "normal-boy",
   knight: "normal-boy",
-  mermaid: "mermaid"
+  mermaid: "mermaid",
+  fairy: "fairy",
+  "dragon-rider": "dragon-rider",
+  "star-explorer": "star-explorer",
+  "crystal-knight": "crystal-knight"
 };
 const HERO_ATLAS_ROW: Record<CharacterId, number> = {
   "normal-girl": 0,
@@ -469,7 +473,7 @@ export class GameScene extends Phaser.Scene {
       for (const [x, y, r, colour] of planets) {
         g.fillStyle(colour, 0.88); g.fillCircle(x!, y!, r!);
         g.lineStyle(10, 0xffffff, 0.42); g.strokeCircle(x!, y!, r! * 0.74);
-        g.lineStyle(8, 0xffffff, 0.55); g.beginPath(); g.ellipse(x!, y!, r! * 1.8, r! * 0.48, -0.2, 0, Math.PI * 2); g.strokePath();
+        g.lineStyle(8, 0xffffff, 0.55); g.strokeEllipse(x! - r! * 0.9, y! - r! * 0.24, r! * 1.8, r! * 0.48);
       }
       g.fillStyle(0xffffff, 0.8);
       for (let i = 0; i < 35; i++) {
@@ -1194,7 +1198,11 @@ export class GameScene extends Phaser.Scene {
       prince: { hair: 0x402b2d, eyes: 0x3286d1, main: 0x2674d8, shade: 0x17458f, trim: 0xffd45b },
       "male-explorer": { hair: 0x684126, eyes: 0x3f9a76, main: 0x24a889, shade: 0x14745f, trim: 0xf4c34e },
       knight: { hair: 0x4a5262, eyes: 0x4b8fca, main: 0x9db2c6, shade: 0x596d89, trim: 0xffdf71 },
-      mermaid: { hair: 0x0b8fa7, eyes: 0x218fc1, main: 0x21c9bc, shade: 0x087e9a, trim: 0xff85c6 }
+      mermaid: { hair: 0x0b8fa7, eyes: 0x218fc1, main: 0x21c9bc, shade: 0x087e9a, trim: 0xff85c6 },
+      fairy: { hair: 0xe69ad4, eyes: 0x5b6cc8, main: 0xb987ef, shade: 0x805acb, trim: 0x8bf0e2 },
+      "dragon-rider": { hair: 0x9b5739, eyes: 0x365d9c, main: 0x36ad9b, shade: 0x1b756c, trim: 0xffcf6b },
+      "star-explorer": { hair: 0x44364e, eyes: 0x3a66ad, main: 0x438be0, shade: 0x2854aa, trim: 0xffdc73 },
+      "crystal-knight": { hair: 0x463c61, eyes: 0x47529d, main: 0x91bce0, shade: 0x566baf, trim: 0xc6f7ff }
     };
     const hero = heroPalettes[this.session.characterId];
     const outfitPalette: Record<string, { main: number; shade: number; trim: number }> = {
