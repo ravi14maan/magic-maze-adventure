@@ -30,7 +30,7 @@ export function getCharacterArtPosition(id: CharacterId): CharacterArtPosition {
   const canonical = canonicalCharacterArtId(id);
   const index = ROSTER.indexOf(canonical);
   const safeIndex = index >= 0 ? index : 0;
-  return { column: safeIndex % 5, row: Math.floor(safeIndex / 5), cellWidth: 256, cellHeight: 320 };
+  return { column: safeIndex % 5, row: Math.floor(safeIndex / 5), cellWidth: 220, cellHeight: 275 };
 }
 
 export function getCharacterArtBackgroundStyle(id: CharacterId): string {

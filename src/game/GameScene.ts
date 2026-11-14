@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import type { CharacterId } from "../data/characters";
 import { difficultyForLevel, type ChallengeType, type WorldDefinition } from "../data/worlds";
 import { getCharacterArtUrl, getCharacterArtPosition } from "../data/characterArt";
-import { WORLD_ART_ORDER } from "../data/worldArt";
+import { WORLD_ART_ORDER, getWorldAtlasUrl } from "../data/worldArt";
 import type { CharacterWardrobe } from "../data/profiles";
 
 export interface MazeSession {
@@ -106,7 +106,7 @@ export class GameScene extends Phaser.Scene {
 
   preload(): void {
     this.load.image("hero-roster-atlas", getCharacterArtUrl("normal-girl"));
-    this.load.image("world-atlas", "assets/worlds/world-atlas.svg");
+    this.load.image("world-atlas", getWorldAtlasUrl());
 
   }
 
