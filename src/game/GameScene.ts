@@ -30,15 +30,14 @@ const SUPPLIED_ART_BY_CHARACTER: Record<CharacterId, CharacterId> = {
   unicorn: "unicorn",
   witch: "witch",
   princess: "princess",
-  prince: "princess",
-  "male-explorer": "normal-boy",
-  knight: "normal-boy",
+  prince: "prince",
+  "male-explorer": "star-explorer",
+  knight: "crystal-knight",
   mermaid: "mermaid",
   fairy: "fairy",
   "dragon-rider": "dragon-rider",
   "star-explorer": "star-explorer",
   "crystal-knight": "crystal-knight",
-  prince: "prince",
   "ice-mage": "ice-mage"
 };
 const HERO_ATLAS_ROW: Record<CharacterId, number> = {
@@ -47,16 +46,15 @@ const HERO_ATLAS_ROW: Record<CharacterId, number> = {
   unicorn: 2,
   witch: 3,
   princess: 4,
-  prince: 4,
-  "male-explorer": 8,
-  knight: 9,
   mermaid: 5,
   fairy: 6,
   "dragon-rider": 7,
   "star-explorer": 8,
   "crystal-knight": 9,
   prince: 10,
-  "ice-mage": 11
+  "ice-mage": 11,
+  "male-explorer": 8,
+  knight: 9
 };
 
 export class GameScene extends Phaser.Scene {
@@ -1167,7 +1165,8 @@ export class GameScene extends Phaser.Scene {
       fairy: { hair: 0xe69ad4, eyes: 0x5b6cc8, main: 0xb987ef, shade: 0x805acb, trim: 0x8bf0e2 },
       "dragon-rider": { hair: 0x9b5739, eyes: 0x365d9c, main: 0x36ad9b, shade: 0x1b756c, trim: 0xffcf6b },
       "star-explorer": { hair: 0x44364e, eyes: 0x3a66ad, main: 0x438be0, shade: 0x2854aa, trim: 0xffdc73 },
-      "crystal-knight": { hair: 0x463c61, eyes: 0x47529d, main: 0x91bce0, shade: 0x566baf, trim: 0xc6f7ff }
+      "crystal-knight": { hair: 0x463c61, eyes: 0x47529d, main: 0x91bce0, shade: 0x566baf, trim: 0xc6f7ff },
+      "ice-mage": { hair: 0x9bd8ef, eyes: 0x467fb5, main: 0x8ed7fa, shade: 0x4c94cb, trim: 0xffffff }
     };
     const hero = heroPalettes[this.session.characterId];
     const outfitPalette: Record<string, { main: number; shade: number; trim: number }> = {
