@@ -112,6 +112,9 @@ export class GameScene extends Phaser.Scene {
       "fairy", "dragon-rider", "star-explorer", "crystal-knight", "prince", "ice-mage"
     ];
     for (const id of heroIds) this.load.image("hero-art-" + id, getCharacterArtUrl(id));
+    for (const backdrop of ["underwater", "candy", "forest", "crystal"]) {
+      this.load.image("world-bg-" + backdrop, "assets/worlds/" + backdrop + ".jpg");
+    }
     this.load.image("world-atlas", getWorldAtlasUrl());
   }
 
@@ -697,9 +700,9 @@ export class GameScene extends Phaser.Scene {
 
     if (underwater) {
       // Deep-to-surface ocean gradient: bright shafts above, rich blue water below.
-      const hdOcean = this.textures.exists("world-bg-atlas");
+      const hdOcean = this.textures.exists("world-bg-underwater");
       if (hdOcean) {
-        const ocean = this.add.tileSprite(0, 0, WORLD_LENGTH, height, "world-bg-atlas", 0)
+        const ocean = this.add.tileSprite(0, 0, WORLD_LENGTH, height, "world-bg-underwater")
           .setOrigin(0, 0).setDepth(-7).setScrollFactor(0.14);
         ocean.setTileScale(height / 320, height / 320);
       } else {
@@ -797,11 +800,10 @@ export class GameScene extends Phaser.Scene {
         this.tweens.add({ targets: bubble, y: y - 40 - (i % 4) * 8, alpha: 0.03, duration: 2800 + (i % 5) * 420, yoyo: true, repeat: -1 });
       }
     } else {
-      const hdBackdropFrame: Record<string, number> = { candy: 1, forest: 2, crystal: 3 };
-      const selectedFrame = hdBackdropFrame[this.session.world.backdrop];
-      const hasHdBackdrop = selectedFrame !== undefined && this.textures.exists("world-bg-atlas");
+      const hdBackdropKey = "world-bg-" + this.session.world.backdrop;
+      const hasHdBackdrop = this.textures.exists(hdBackdropKey);
       const background = hasHdBackdrop
-        ? this.add.tileSprite(0, 0, WORLD_LENGTH, height, "world-bg-atlas", selectedFrame)
+        ? this.add.tileSprite(0, 0, WORLD_LENGTH, height, hdBackdropKey)
         : this.add.tileSprite(0, 0, WORLD_LENGTH, height, "world-atlas", this.session.world.backdrop);
       background.setOrigin(0, 0).setDepth(-6).setScrollFactor(0.16);
       const backgroundScale = hasHdBackdrop ? height / 320 : height / 540;
