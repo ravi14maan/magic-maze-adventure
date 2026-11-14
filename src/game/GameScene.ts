@@ -105,8 +105,6 @@ export class GameScene extends Phaser.Scene {
     ];
     for (const id of heroIds) this.load.image("hero-art-" + id, "assets/characters/" + id + ".webp");
 
-    const backdrops = ["underwater", "candy", "forest", "crystal", "sky", "volcano", "desert"];
-    for (const backdrop of backdrops) this.load.image("world-bg-" + backdrop, "assets/worlds/" + backdrop + ".webp");
   }
 
   create(): void {
@@ -399,6 +397,98 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private drawWorldLandmarks(height: number): void {
+    const index = this.session.worldIndex;
+    const g = this.add.graphics().setScrollFactor(0.3).setDepth(-2);
+    if (index === 10) {
+      // Dragon Valley: layered mountains, waterfall and a distant dragon silhouette.
+      g.fillStyle(0x315c66, 0.82);
+      g.fillTriangle(0, height * 0.78, 390, height * 0.16, 760, height * 0.78);
+      g.fillTriangle(530, height * 0.8, 980, height * 0.1, 1440, height * 0.8);
+      g.fillTriangle(1210, height * 0.8, 1510, height * 0.22, 1800, height * 0.8);
+      g.fillStyle(0xb2f1f1, 0.72);
+      g.fillTriangle(890, height * 0.35, 940, height * 0.63, 980, height * 0.35);
+      g.fillStyle(0x93e9ea, 0.55);
+      g.fillRect(915, height * 0.43, 28, height * 0.29);
+      g.fillStyle(0x193f54, 0.78);
+      g.fillEllipse(520, height * 0.25, 96, 25);
+      g.fillTriangle(485, height * 0.25, 440, height * 0.15, 505, height * 0.23);
+      g.fillTriangle(545, height * 0.25, 596, height * 0.14, 558, height * 0.24);
+      g.fillTriangle(488, height * 0.23, 457, height * 0.06, 520, height * 0.22);
+      g.fillTriangle(536, height * 0.23, 577, height * 0.04, 549, height * 0.24);
+    } else if (index === 11) {
+      // Sky Islands: cloud banks and floating grass-topped islands.
+      g.fillStyle(0xffffff, 0.28);
+      for (let i = 0; i < 12; i++) {
+        const x = 120 + i * 270;
+        const y = height * (0.42 + (i % 3) * 0.08);
+        g.fillEllipse(x, y, 240, 46);
+        g.fillEllipse(x + 54, y - 18, 150, 42);
+      }
+      for (let i = 0; i < 6; i++) {
+        const x = 180 + i * 560;
+        const y = height * (0.56 + (i % 2) * 0.08);
+        g.fillStyle(0x79bd8d, 0.88);
+        g.fillEllipse(x, y, 260, 58);
+        g.fillStyle(0x5d7196, 0.72);
+        g.fillTriangle(x - 116, y + 12, x + 116, y + 12, x, y + 160);
+        g.fillStyle(0x9cf0bd, 0.85);
+        g.fillEllipse(x - 42, y - 20, 68, 30);
+        g.fillEllipse(x + 38, y - 18, 72, 28);
+      }
+    } else if (index === 12) {
+      // Volcano Realm: jagged peaks and glowing lava channels in the distance.
+      g.fillStyle(0x4c354a, 0.92);
+      for (let i = 0; i < 7; i++) {
+        const x = i * 570 - 100;
+        g.fillTriangle(x, height * 0.84, x + 285, height * (0.15 + (i % 3) * 0.07), x + 570, height * 0.84);
+      }
+      g.lineStyle(12, 0xffa23b, 0.78);
+      for (let i = 0; i < 6; i++) {
+        const x = 250 + i * 510;
+        g.beginPath();
+        g.moveTo(x, height * 0.36);
+        g.lineTo(x + 18, height * 0.55);
+        g.lineTo(x - 3, height * 0.74);
+        g.strokePath();
+      }
+      g.fillStyle(0xffd16b, 0.25);
+      for (let i = 0; i < 28; i++) g.fillCircle(80 + i * 117, 80 + (i % 5) * 54, 3 + (i % 3));
+    } else if (index === 13) {
+      // Desert Ruins: warm sandstone arches, pillars and distant dunes.
+      g.fillStyle(0xa96b55, 0.55);
+      for (let i = 0; i < 5; i++) {
+        const x = 250 + i * 690;
+        g.fillRoundedRect(x, height * 0.34, 42, height * 0.42, 10);
+        g.fillRoundedRect(x + 170, height * 0.34, 42, height * 0.42, 10);
+        g.lineStyle(20, 0xe5b57b, 0.65);
+        g.beginPath(); g.arc(x + 105, height * 0.35, 105, Math.PI, 0, false); g.strokePath();
+        g.fillStyle(0xc18a63, 0.6);
+        g.fillRoundedRect(x - 15, height * 0.33, 242, 30, 9);
+      }
+      g.fillStyle(0xffdb98, 0.33);
+      for (let i = 0; i < 14; i++) g.fillEllipse(i * 310, height * 0.77, 330, 90);
+    } else if (index === 14) {
+      // Rainbow City: colourful distant towers and a luminous rainbow bridge.
+      const colours = [0x2b9bd8, 0x8e6be8, 0xe85a9a, 0xf39c43, 0x3bbd9d];
+      for (let i = 0; i < 18; i++) {
+        const x = 75 + i * 190;
+        const top = height * (0.25 + (i % 4) * 0.075);
+        g.fillStyle(colours[i % colours.length]!, 0.62);
+        g.fillRoundedRect(x, top, 92, height * 0.56, 14);
+        g.fillStyle(0xffffff, 0.42);
+        for (let w = 0; w < 3; w++) for (let h = 0; h < 3; h++) {
+          g.fillRoundedRect(x + 14 + w * 24, top + 25 + h * 44, 10, 17, 4);
+        }
+      }
+      const bridge = this.add.graphics().setScrollFactor(0.25).setDepth(-1);
+      bridge.lineStyle(30, 0xff7da9, 0.65); bridge.beginPath(); bridge.arc(920, height * 0.73, 370, Math.PI, 0, false); bridge.strokePath();
+      bridge.lineStyle(21, 0xffdc69, 0.65); bridge.beginPath(); bridge.arc(920, height * 0.73, 340, Math.PI, 0, false); bridge.strokePath();
+      bridge.lineStyle(17, 0x77e4bd, 0.65); bridge.beginPath(); bridge.arc(920, height * 0.73, 308, Math.PI, 0, false); bridge.strokePath();
+      bridge.lineStyle(13, 0x79caff, 0.65); bridge.beginPath(); bridge.arc(920, height * 0.73, 279, Math.PI, 0, false); bridge.strokePath();
+    }
+  }
+
   private drawAmbientParallax(width: number, height: number, underwater: boolean): void {
     const themes: string[][] = [
       ["🫧", "🐠", "🪼", "✨", "🐚"],
@@ -464,20 +554,8 @@ export class GameScene extends Phaser.Scene {
     const floor = this.session.world.floor;
     const accent = this.session.world.accent;
     const underwater = this.session.worldIndex === 0;
-    const backdropKey = "world-bg-" + this.session.world.backdrop;
-    const hasArtworkBackdrop = this.textures.exists(backdropKey);
-    if (hasArtworkBackdrop) {
-      const source = this.textures.get(backdropKey).getSourceImage() as HTMLImageElement;
-      const tileScale = height / Math.max(1, source.height);
-      this.add.tileSprite(0, 0, WORLD_LENGTH, height, backdropKey)
-        .setOrigin(0, 0)
-        .setTileScale(tileScale, tileScale)
-        .setAlpha(0.92)
-        .setScrollFactor(0.22)
-        .setDepth(-5);
-    }
 
-    if (underwater && !hasArtworkBackdrop) {
+    if (underwater) {
       // Deep-to-surface ocean gradient: bright shafts above, rich blue water below.
       const water = this.add.graphics();
       water.fillGradientStyle(0x39d9f2, 0x19a6d5, 0x075a9c, 0x032d61, 1);
@@ -571,8 +649,17 @@ export class GameScene extends Phaser.Scene {
         const bubble = this.add.circle(x, y, radius, 0xc9f8ff, 0.12).setStrokeStyle(1.5, 0xe7ffff, 0.58);
         this.tweens.add({ targets: bubble, y: y - 40 - (i % 4) * 8, alpha: 0.03, duration: 2800 + (i % 5) * 420, yoyo: true, repeat: -1 });
       }
-    } else if (!hasArtworkBackdrop) {
-      this.add.rectangle(WORLD_LENGTH / 2, height / 2, WORLD_LENGTH, height, Number.parseInt(sky.replace("#", ""), 16));
+    } else {
+      const gradient = this.add.graphics();
+      gradient.fillGradientStyle(
+        Number.parseInt(sky.replace("#", ""), 16),
+        Number.parseInt(sky.replace("#", ""), 16),
+        this.session.world.floor,
+        this.session.world.wall,
+        1
+      );
+      gradient.fillRect(0, 0, WORLD_LENGTH, height).setDepth(-4);
+      this.add.rectangle(WORLD_LENGTH / 2, height / 2, WORLD_LENGTH, height, Number.parseInt(sky.replace("#", ""), 16), 0.08);
       for (let i = 0; i < 16; i++) {
         const x = 65 + i * 205;
         this.add.ellipse(x, this.groundY - 54 - (i % 3) * 15, 340, 150, accent, 0.20);
@@ -591,6 +678,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.drawAmbientParallax(width, height, underwater);
+    this.drawWorldLandmarks(height);
 
     const groundSegments: Array<[number, number]> = [];
     let segmentStart = 0;
