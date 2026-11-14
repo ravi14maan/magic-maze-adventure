@@ -107,10 +107,10 @@ export class GameScene extends Phaser.Scene {
   preload(): void {
     this.load.image("hero-roster-atlas", getCharacterArtUrl("normal-girl"));
     this.load.image("world-atlas", getWorldAtlasUrl());
-
-    for (const backdrop of ["underwater", "candy", "forest", "crystal"]) {
-      this.load.image("world-bg-" + backdrop, "assets/worlds/" + backdrop + ".webp");
-    }
+    this.load.spritesheet("world-bg-atlas", "assets/worlds/world-atlas-hd.webp", {
+      frameWidth: 576,
+      frameHeight: 384
+    });
   }
 
   create(): void {
@@ -695,11 +695,11 @@ export class GameScene extends Phaser.Scene {
 
     if (underwater) {
       // Deep-to-surface ocean gradient: bright shafts above, rich blue water below.
-      const hdOcean = this.textures.exists("world-bg-underwater");
+      const hdOcean = this.textures.exists("world-bg-atlas");
       if (hdOcean) {
-        const ocean = this.add.tileSprite(0, 0, WORLD_LENGTH, height, "world-bg-underwater")
+        const ocean = this.add.tileSprite(0, 0, WORLD_LENGTH, height, "world-bg-atlas", 0)
           .setOrigin(0, 0).setDepth(-7).setScrollFactor(0.14);
-        ocean.setTileScale(height / 768, height / 768);
+        ocean.setTileScale(height / 384, height / 384);
       } else {
         const water = this.add.graphics().setDepth(-7);
         water.fillGradientStyle(0x39d9f2, 0x19a6d5, 0x075a9c, 0x032d61, 1);
@@ -795,13 +795,15 @@ export class GameScene extends Phaser.Scene {
         this.tweens.add({ targets: bubble, y: y - 40 - (i % 4) * 8, alpha: 0.03, duration: 2800 + (i % 5) * 420, yoyo: true, repeat: -1 });
       }
     } else {
-      const hdBackdropKey = "world-bg-" + this.session.world.backdrop;
-      const hasHdBackdrop = this.textures.exists(hdBackdropKey);
+      const hdBackdropFrame: Record<string, number> = { candy: 1, forest: 2, crystal: 3 };
+      const selectedFrame = hdBackdropFrame[this.session.world.backdrop];
+      const hasHdBackdrop = selectedFrame !== undefined && this.textures.exists("world-bg-atlas");
       const background = hasHdBackdrop
-        ? this.add.tileSprite(0, 0, WORLD_LENGTH, height, hdBackdropKey)
+        ? this.add.tileSprite(0, 0, WORLD_LENGTH, height, "world-bg-atlas", selectedFrame)
         : this.add.tileSprite(0, 0, WORLD_LENGTH, height, "world-atlas", this.session.world.backdrop);
       background.setOrigin(0, 0).setDepth(-6).setScrollFactor(0.16);
-      background.setTileScale(hasHdBackdrop ? height / 768 : height / 540, hasHdBackdrop ? height / 768 : height / 540);
+      const backgroundScale = hasHdBackdrop ? height / 384 : height / 540;
+      background.setTileScale(backgroundScale, backgroundScale);
       for (let i = 0; i < 16; i++) {
         const x = 65 + i * 205;
         this.add.ellipse(x, this.groundY - 54 - (i % 3) * 15, 340, 150, accent, 0.20);
