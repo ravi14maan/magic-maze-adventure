@@ -198,7 +198,7 @@ function renderCharacters(): void {
   const selectedHero = CHARACTERS.find(ch => ch.id === p.selectedCharacter) ?? CHARACTERS[0]!;
   app!.innerHTML = `
     <main class="screen content-screen">
-      ${subHeader("Character Closet", "Ten magical heroes. Unlock your favourites with coins and collect their power.", "dashboard")}
+      ${subHeader("Character Closet", "Twelve magical heroes. Unlock your favourites with coins and collect their power.", "dashboard")}
       <div class="character-grid-v2">
         ${CHARACTERS.filter(ch => ART_READY_CHARACTER_IDS.includes(ch.id)).map(ch => {
           const owned = p.unlockedCharacters.includes(ch.id);
