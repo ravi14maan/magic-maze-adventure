@@ -38,6 +38,21 @@ export function getWorldArtPosition(backdrop: string): { column: number; row: nu
 }
 
 export function getWorldArtStyle(backdrop: string): string {
+  const hdFiles: Record<string, string> = {
+    underwater: "underwater.jpg",
+    candy: "candy.jpg",
+    forest: "forest.jpg",
+    crystal: "crystal.jpg"
+  };
+  const hdFile = hdFiles[backdrop];
+  if (hdFile) {
+    return [
+      "background-image:url(assets/worlds/" + hdFile + ")",
+      "background-size:cover",
+      "background-position:center",
+      "background-repeat:no-repeat"
+    ].join(";");
+  }
   const { column, row } = getWorldArtPosition(backdrop);
   return [
     "background-image:url(" + getWorldAtlasUrl() + ")",
