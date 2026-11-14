@@ -114,12 +114,12 @@ function renderDashboard(): void {
         <div class="stat-card"><span>🪙</span><strong>${p.coins}</strong><small>Magic coins</small></div>
         <div class="stat-card"><span>💎</span><strong>${p.gems}</strong><small>Gems</small></div>
         <div class="stat-card"><span>🏆</span><strong>${p.trophies}</strong><small>Trophies</small></div>
-        <div class="stat-card"><span>🗺️</span><strong>${progressCount(p)}/50</strong><small>Levels done</small></div>
+        <div class="stat-card"><span>🗺️</span><strong>${progressCount(p)}/75</strong><small>Levels done</small></div>
       </section>
       <section class="dashboard-grid">
         <button class="feature-card character-feature" data-action="characters"><span class="feature-icon">🧙‍♀️</span><span><strong>Character Closet</strong><small>Choose heroes and unlock friends</small></span><b>›</b></button>
         <button class="feature-card avatar-feature" data-action="avatar"><span class="feature-icon">🎨</span><span><strong>Avatar Studio</strong><small>Make your own cartoon profile</small></span><b>›</b></button>
-        <button class="feature-card world-feature" data-action="worlds"><span class="feature-icon">🌍</span><span><strong>World Map</strong><small>10 magical worlds · 50 levels</small></span><b>›</b></button>
+        <button class="feature-card world-feature" data-action="worlds"><span class="feature-icon">🌍</span><span><strong>World Map</strong><small>15 magical worlds · 75 levels</small></span><b>›</b></button>
         <button class="feature-card settings-feature" data-action="settings"><span class="feature-icon">🎵</span><span><strong>Sound & Settings</strong><small>Music, sound effects and controls</small></span><b>›</b></button>
       </section>
       <footer class="screen-footer">Made with imagination by Ahana ✨</footer>
@@ -137,7 +137,7 @@ function renderWorlds(): void {
           const done = [1,2,3,4,5].filter(n => p.completedLevels.includes(levelKey(i,n))).length;
           return `
             <button class="world-card ${unlocked ? "" : "locked"}" data-action="world" data-index="${i}" ${unlocked ? "" : "disabled"}>
-              <div class="world-art" style="--world-bg:${world.sky};--world-wall:#${world.wall.toString(16).padStart(6,"0")}"><span>${world.icon}</span><i>${unlocked ? "✦" : "🔒"}</i></div>
+              <div class="world-art world-art-${world.backdrop}" style="--world-bg:${world.sky};--world-wall:#${world.wall.toString(16).padStart(6,"0")}"><span>${world.icon}</span><i>${unlocked ? "✦" : "🔒"}</i></div>
               <strong>${world.name}</strong><small>${world.description}</small>
               <span class="world-progress">${unlocked ? `${done}/5 levels complete` : "Complete the world before this one"}</span>
             </button>`;
@@ -186,42 +186,82 @@ function renderLevels(): void {
 }
 
 function renderHeroPortrait(id: CharacterId): string {
-  const readableName = id.replaceAll("-", " ");
-  const rows: Record<CharacterId, number> = {
-    "normal-girl": 0, "normal-boy": 1, unicorn: 2, witch: 3,
-    princess: 4, prince: 4, "male-explorer": 1, knight: 1, mermaid: 5
+  const artFiles: Record<CharacterId, string> = {
+    "normal-girl": "normal-girl",
+    "normal-boy": "normal-boy",
+    unicorn: "unicorn",
+    witch: "witch",
+    princess: "princess",
+    mermaid: "mermaid",
+    fairy: "fairy",
+    "dragon-rider": "dragon-rider",
+    "star-explorer": "star-explorer",
+    "crystal-knight": "crystal-knight",
+    prince: "princess",
+    "male-explorer": "star-explorer",
+    knight: "crystal-knight"
   };
-  const row = rows[id] ?? 0;
-  return '<span class="hero-art-portrait" role="img" aria-label="' + readableName + '" style="--hero-art-row:' + (row * 20) + '%"></span>';
+  const readableName = id.replaceAll("-", " ");
+  return '<img class="hero-art-portrait" src="assets/characters/' + artFiles[id] + '.webp" alt="' + readableName + '" loading="lazy">';
 }
 
 function renderCharacters(): void {
   const p = currentProfileOrThrow();
+  const wardrobe = p.wardrobe ?? DEFAULT_WARDROBE;
+  const selectedHero = CHARACTERS.find(ch => ch.id === p.selectedCharacter) ?? CHARACTERS[0]!;
   app!.innerHTML = `
     <main class="screen content-screen">
-      ${subHeader("Character Closet", "These six heroes use the pictures you supplied. We can add more heroes later.", "dashboard")}
+      ${subHeader("Character Closet", "Ten magical heroes. Unlock your favourites with coins and collect their power.", "dashboard")}
       <div class="character-grid-v2">
         ${CHARACTERS.filter(ch => ART_READY_CHARACTER_IDS.includes(ch.id)).map(ch => {
           const owned = p.unlockedCharacters.includes(ch.id);
           const selected = p.selectedCharacter === ch.id;
           return `
             <article class="hero-card ${owned ? "" : "locked"} ${selected ? "selected" : ""}">
-              <div class="hero-portrait" style="--hero-colour:#${ch.colour.toString(16).padStart(6,"0")}">${renderHeroPortrait(ch.id)}${owned ? "" : "<i>🔒</i>"}</div>
-              <strong>${ch.name}</strong><small>${ch.description}</small>
+              <div class="hero-portrait" style="--hero-colour:#${ch.colour.toString(16).padStart(6,"0")}">
+                ${renderHeroPortrait(ch.id)}
+                ${owned ? "" : '<span class="hero-lock">🔒</span>'}
+              </div>
+              <strong>${ch.name}</strong>
+              <small>${ch.description}</small>
+              <div class="hero-power">⭐ Power ${ch.powerPoints.toLocaleString("en-IN")}</div>
               ${owned
                 ? `<button class="select-hero" data-action="select-character" data-id="${ch.id}">${selected ? "✓ Selected" : "Choose hero"}</button>`
-                : `<button class="unlock-hero" data-action="unlock-character" data-id="${ch.id}">🪙 ${ch.coinCost} coins</button>`}
+                : `<button class="unlock-hero" data-action="unlock-character" data-id="${ch.id}">🪙 ${ch.coinCost.toLocaleString("en-IN")} coins</button>`}
             </article>`;
         }).join("")}
       </div>
       <section class="wardrobe-panel">
-        <div class="wardrobe-heading"><div><p class="eyebrow">MAKE THIS HERO YOURS</p><h2>Character Wardrobe</h2></div><span class="wardrobe-preview" id="wardrobe-preview">${p.wardrobe?.hairstyle ?? "🌸"} ${p.wardrobe?.outfit ?? "👗"} ${p.wardrobe?.accessory ?? "✨"}</span></div>
-        <h3>Hairstyle</h3><div class="choice-row">${HAIRSTYLES.map(e=>`<button type="button" class="choice-chip ${(p.wardrobe?.hairstyle ?? "🌸")===e?"active":""}" data-action="wardrobe-hair" data-value="${e}">${e}</button>`).join("")}</div>
-        <h3>Outfit</h3><div class="choice-row">${OUTFITS.map(e=>`<button type="button" class="choice-chip ${(p.wardrobe?.outfit ?? "👗")===e?"active":""}" data-action="wardrobe-outfit" data-value="${e}">${e}</button>`).join("")}</div>
-        <h3>Accessory</h3><div class="choice-row">${AVATAR_ACCESSORIES.map(e=>`<button type="button" class="choice-chip ${(p.wardrobe?.accessory ?? "✨")===e?"active":""}" data-action="wardrobe-accessory" data-value="${e}">${e}</button>`).join("")}</div>
-        <p class="fine-print">Your outfit choices are saved separately for each player profile.</p>
+        <div class="wardrobe-heading">
+          <div><p class="eyebrow">COSMETIC CUSTOMISATION</p><h2>Character Wardrobe</h2></div>
+          <span class="wardrobe-preview" id="wardrobe-preview">${wardrobe.hairstyle} ${wardrobe.outfit} ${wardrobe.accessory}</span>
+        </div>
+        <div class="wardrobe-live-preview">
+          <div class="wardrobe-live-figure">
+            ${renderHeroPortrait(selectedHero.id)}
+            <span class="wardrobe-live-item wardrobe-hair">${wardrobe.hairstyle}</span>
+            <span class="wardrobe-live-item wardrobe-outfit">${wardrobe.outfit}</span>
+            <span class="wardrobe-live-item wardrobe-accessory">${wardrobe.accessory}</span>
+          </div>
+          <div class="wardrobe-live-copy">
+            <strong>${selectedHero.name}'s look</strong>
+            <p>Tap any item below to preview it on your selected hero. Your choices are saved to this player profile and appear as decorations while you play.</p>
+            <ul>
+              <li><b>Hairstyle</b> adds a head decoration.</li>
+              <li><b>Outfit</b> adds a costume badge.</li>
+              <li><b>Accessory</b> adds a sparkle, bow, wing or charm.</li>
+            </ul>
+          </div>
+        </div>
+        <h3>Hairstyle</h3>
+        <div class="choice-row">${HAIRSTYLES.map(e=>`<button type="button" class="choice-chip ${wardrobe.hairstyle===e?"active":""}" data-action="wardrobe-hair" data-value="${e}">${e}</button>`).join("")}</div>
+        <h3>Outfit</h3>
+        <div class="choice-row">${OUTFITS.map(e=>`<button type="button" class="choice-chip ${wardrobe.outfit===e?"active":""}" data-action="wardrobe-outfit" data-value="${e}">${e}</button>`).join("")}</div>
+        <h3>Accessory</h3>
+        <div class="choice-row">${AVATAR_ACCESSORIES.map(e=>`<button type="button" class="choice-chip ${wardrobe.accessory===e?"active":""}" data-action="wardrobe-accessory" data-value="${e}">${e}</button>`).join("")}</div>
+        <p class="fine-print">Wardrobe items are cosmetic, do not change hero power, and are saved separately for each player profile.</p>
       </section>
-      <div class="hint-card">🪙 Complete adventures and collect treasures to earn coins. Character unlocks belong to this profile.</div>
+      <div class="hint-card">🪙 Earn coins by completing levels and collecting treasure. Power points are the hero rating; coins are the unlock price.</div>
     </main>`;
 }
 
@@ -495,7 +535,7 @@ app.addEventListener("click", (event) => {
     render();
   } else if (action === "next-level") {
     if (currentLevel<5) startLevel(currentLevel+1);
-    else { currentWorldIndex=Math.min(9,currentWorldIndex+1);screen="worlds";render(); }
+    else { currentWorldIndex=Math.min(WORLDS.length-1,currentWorldIndex+1);screen="worlds";render(); }
   }
 });
 
