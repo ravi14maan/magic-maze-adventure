@@ -112,9 +112,6 @@ export class GameScene extends Phaser.Scene {
       "fairy", "dragon-rider", "star-explorer", "crystal-knight", "prince", "ice-mage"
     ];
     for (const id of heroIds) this.load.image("hero-art-" + id, getCharacterArtUrl(id));
-    for (const backdrop of ["underwater", "candy", "forest", "crystal"]) {
-      this.load.image("world-bg-" + backdrop, "assets/worlds/" + backdrop + ".jpg");
-    }
     this.load.image("world-atlas", getWorldAtlasUrl());
   }
 
