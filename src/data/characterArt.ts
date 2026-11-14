@@ -189,11 +189,7 @@ const EXISTING_ART: Partial<Record<CharacterId, string>> = {
   "normal-boy": "normal-boy.webp",
   unicorn: "unicorn.webp",
   princess: "princess.webp",
-  mermaid: "mermaid.webp",
-  fairy: "fairy.webp",
-  "dragon-rider": "dragon-rider.webp",
-  "star-explorer": "star-explorer.webp",
-  "crystal-knight": "crystal-knight.webp"
+  mermaid: "mermaid.webp"
 };
 
 export function canonicalCharacterArtId(id: CharacterId): CharacterId {
