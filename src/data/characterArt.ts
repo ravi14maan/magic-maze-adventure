@@ -1,7 +1,7 @@
 import type { CharacterId } from "./characters";
 
 /** Original scalable SVG artwork for the four additional heroes. */
-const fairy = \`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 520">
+const fairy = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 520">
 <defs>
  <linearGradient id="wing" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#eaffff" stop-opacity=".95"/><stop offset=".55" stop-color="#8fe9e3" stop-opacity=".65"/><stop offset="1" stop-color="#c18bf4" stop-opacity=".7"/></linearGradient>
  <linearGradient id="dress" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#ffb9dc"/><stop offset=".55" stop-color="#cb7df3"/><stop offset="1" stop-color="#8254cf"/></linearGradient>
@@ -34,9 +34,9 @@ const fairy = \`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 520">
 <path d="M174 93 L190 52 L205 93Z" fill="#ffe076" stroke="#a78046" stroke-width="5"/><circle cx="190" cy="90" r="12" fill="#85eee1" stroke="#fff" stroke-width="4"/>
 <path d="M278 276 L312 217" stroke="#9b72dc" stroke-width="8" stroke-linecap="round"/><path d="M309 211 L319 188 L330 211 L353 216 L332 231 L330 254 L314 236 L292 240 L303 221Z" fill="#fff09a" stroke="#e3a94e" stroke-width="4"/>
 <path d="M85 93 L89 78 L94 93 L110 98 L94 104 L89 121 L84 104 L69 98Z M294 100 L299 86 L304 100 L318 105 L304 111 L299 126 L294 111 L280 105Z" fill="#fff3a5"/>
-</svg>\`;
+</svg>`;
 
-const dragonRider = \`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 520">
+const dragonRider = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 520">
 <defs>
  <linearGradient id="coat" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#59d5bd"/><stop offset="1" stop-color="#137c79"/></linearGradient>
  <linearGradient id="hair" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d98a4e"/><stop offset="1" stop-color="#7c3d2d"/></linearGradient>
@@ -77,9 +77,9 @@ const dragonRider = \`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 5
 <!-- headband and star -->
 <path d="M128 114 Q188 81 250 113" fill="none" stroke="#ffcf68" stroke-width="9"/>
 <path d="M189 89 L198 70 L207 89 L228 93 L212 107 L209 127 L192 114 L174 123 L179 103 L164 91Z" fill="#ffe17b" stroke="#a37c4e" stroke-width="4"/>
-</svg>\`;
+</svg>`;
 
-const starExplorer = \`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 520">
+const starExplorer = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 520">
 <defs>
  <linearGradient id="suit" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#51b6f6"/><stop offset="1" stop-color="#2854aa"/></linearGradient>
  <linearGradient id="hair" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#76503f"/><stop offset="1" stop-color="#282941"/></linearGradient>
@@ -118,9 +118,9 @@ const starExplorer = \`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 
 <circle cx="190" cy="112" r="12" fill="#6ce3e8" stroke="#fff" stroke-width="4"/>
 <!-- chest badge -->
 <path d="M190 312 L198 332 L220 334 L203 348 L208 370 L190 358 L172 370 L177 348 L160 334 L182 332Z" fill="#ffd25e" stroke="#fff1ad" stroke-width="4"/>
-</svg>\`;
+</svg>`;
 
-const crystalKnight = \`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 520">
+const crystalKnight = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 520">
 <defs>
  <linearGradient id="armor" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#dff6ff"/><stop offset=".55" stop-color="#91bce0"/><stop offset="1" stop-color="#566baf"/></linearGradient>
  <linearGradient id="cape" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#c08df5"/><stop offset="1" stop-color="#573d9b"/></linearGradient>
@@ -159,7 +159,7 @@ const crystalKnight = \`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380
 <!-- crystal tiara -->
 <path d="M131 121 L148 82 L169 109 L190 58 L214 110 L235 81 L252 124" fill="#bfefff" stroke="#637cb7" stroke-width="7" stroke-linejoin="round"/>
 <path d="M190 65 L200 91 L190 105 L179 91Z" fill="#e6ffff"/>
-</svg>\`;
+</svg>`;
 
 const svgArt: Partial<Record<CharacterId, string>> = {
   fairy, "dragon-rider": dragonRider, "star-explorer": starExplorer, "crystal-knight": crystalKnight
