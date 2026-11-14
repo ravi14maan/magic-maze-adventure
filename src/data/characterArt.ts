@@ -11,7 +11,7 @@ const svgDefs = `
  <filter id="shadow"><feGaussianBlur stdDeviation="7"/></filter>
 </defs>`;
 
-const characterSvg = {
+const characterSvg: Partial<Record<CharacterId, string>> = {
   witch: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 520">${svgDefs}
   <ellipse cx="190" cy="495" rx="82" ry="12" fill="#271e48" opacity=".18" filter="url(#shadow)"/>
   <path d="M145 375L136 470L178 470L190 386L209 470L250 470L227 374" fill="#4a356d" stroke="#30244e" stroke-width="8"/>
@@ -177,7 +177,7 @@ const characterSvg = {
   <path d="M151 117L164 77L180 106L190 59L205 106L221 77L233 117Z" fill="#f8d876" stroke="#a67b43" stroke-width="6"/>
   <path d="M190 66L199 89L190 102L181 89Z" fill="#8ce8e2" stroke="#fff" stroke-width="3"/>
   </svg`
-} satisfies Partial<Record<CharacterId, string>>;
+};
 
 const LEGACY_ALIAS: Partial<Record<CharacterId, CharacterId>> = {
   "male-explorer": "star-explorer",
