@@ -189,7 +189,11 @@ const EXISTING_ART: Partial<Record<CharacterId, string>> = {
   "normal-boy": "normal-boy.webp",
   unicorn: "unicorn.webp",
   princess: "princess.webp",
-  mermaid: "mermaid.webp"
+  mermaid: "mermaid.webp",
+  fairy: "fairy.webp",
+  "dragon-rider": "dragon-rider.webp",
+  "star-explorer": "star-explorer.webp",
+  "crystal-knight": "crystal-knight.webp"
 };
 
 export function canonicalCharacterArtId(id: CharacterId): CharacterId {
@@ -198,10 +202,11 @@ export function canonicalCharacterArtId(id: CharacterId): CharacterId {
 
 export function getCharacterArtUrl(id: CharacterId): string {
   const canonical = canonicalCharacterArtId(id);
+  const filename = EXISTING_ART[canonical];
+  if (filename) return "assets/characters/" + filename;
   const inline = characterSvg[canonical];
   if (inline) return makeSvgUrl(inline);
-  const filename = EXISTING_ART[canonical];
-  return "assets/characters/" + (filename ?? "normal-boy.webp");
+  return "assets/characters/normal-boy.webp";
 }
 
 export function getCharacterArtBackgroundStyle(id: CharacterId): string {
