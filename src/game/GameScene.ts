@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import type { CharacterId } from "../data/characters";
 import { difficultyForLevel, type ChallengeType, type WorldDefinition } from "../data/worlds";
-import { getCharacterArtUrl, getCharacterArtPosition } from "../data/characterArt";
+import { getCharacterArtUrl } from "../data/characterArt";
 import { WORLD_ART_ORDER, getWorldAtlasUrl } from "../data/worldArt";
 import type { CharacterWardrobe } from "../data/profiles";
 
@@ -107,14 +107,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload(): void {
-    this.load.image("hero-roster-atlas", getCharacterArtUrl("unicorn"));
-    this.load.image("hero-art-normal-girl", getCharacterArtUrl("normal-girl"));
-    this.load.image("hero-art-normal-boy", getCharacterArtUrl("normal-boy"));
+    const heroIds: CharacterId[] = [
+      "normal-girl", "normal-boy", "unicorn", "witch", "princess", "mermaid",
+      "fairy", "dragon-rider", "star-explorer", "crystal-knight", "prince", "ice-mage"
+    ];
+    for (const id of heroIds) this.load.image("hero-art-" + id, getCharacterArtUrl(id));
     this.load.image("world-atlas", getWorldAtlasUrl());
-    this.load.spritesheet("world-bg-atlas", "assets/worlds/world-atlas-hd.jpg", {
-      frameWidth: 480,
-      frameHeight: 320
-    });
   }
 
   create(): void {
@@ -987,49 +985,25 @@ export class GameScene extends Phaser.Scene {
       "normal-girl", "normal-boy", "unicorn", "witch", "princess", "mermaid",
       "fairy", "dragon-rider", "star-explorer", "crystal-knight", "prince", "ice-mage"
     ];
-    const sheet = this.textures.get("hero-roster-atlas").getSourceImage() as HTMLImageElement;
     const atlas = document.createElement("canvas");
     atlas.width = frameWidth * 4;
     atlas.height = frameHeight * ids.length;
     const atlasContext = atlas.getContext("2d");
-    if (!atlasContext || !sheet) return;
+    if (!atlasContext) return;
 
     const makeCharacterFrame = (id: CharacterId): HTMLCanvasElement => {
-      const position = getCharacterArtPosition(id);
-      const sourceCell = document.createElement("canvas");
-      sourceCell.width = position.cellWidth;
-      sourceCell.height = position.cellHeight;
-      const sourceContext = sourceCell.getContext("2d");
-      if (!sourceContext) return sourceCell;
-      if (id === "normal-girl" || id === "normal-boy") {
-        const starterImage = this.textures.get("hero-art-" + id).getSourceImage() as HTMLImageElement;
-        const fit = Math.min(position.cellWidth / starterImage.width, position.cellHeight / starterImage.height);
-        const drawWidth = starterImage.width * fit;
-        const drawHeight = starterImage.height * fit;
-        sourceContext.drawImage(starterImage, (position.cellWidth - drawWidth) / 2, position.cellHeight - drawHeight, drawWidth, drawHeight);
-      } else {
-        sourceContext.drawImage(
-          sheet,
-          position.column * position.cellWidth,
-          position.row * position.cellHeight,
-          position.cellWidth,
-          position.cellHeight,
-          0,
-          0,
-          position.cellWidth,
-          position.cellHeight
-        );
-      }
-
+      const source = this.textures.get("hero-art-" + id).getSourceImage() as HTMLImageElement;
       const frame = document.createElement("canvas");
       frame.width = frameWidth;
       frame.height = frameHeight;
       const frameContext = frame.getContext("2d");
-      if (!frameContext) return frame;
-      const scale = Math.min(118 / position.cellWidth, 178 / position.cellHeight);
-      const width = position.cellWidth * scale;
-      const height = position.cellHeight * scale;
-      frameContext.drawImage(sourceCell, (frameWidth - width) / 2, frameHeight - height - 4, width, height);
+      if (!frameContext || !source) return frame;
+      const sourceWidth = source.naturalWidth || source.width;
+      const sourceHeight = source.naturalHeight || source.height;
+      const scale = Math.min(118 / sourceWidth, 178 / sourceHeight);
+      const width = sourceWidth * scale;
+      const height = sourceHeight * scale;
+      frameContext.drawImage(source, (frameWidth - width) / 2, frameHeight - height - 4, width, height);
       return frame;
     };
 
