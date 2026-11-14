@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import type { CharacterId } from "../data/characters";
 import { difficultyForLevel, type ChallengeType, type WorldDefinition } from "../data/worlds";
+import { getCharacterArtUrl } from "../data/characterArt";
 import type { CharacterWardrobe } from "../data/profiles";
 
 export interface MazeSession {
@@ -103,7 +104,7 @@ export class GameScene extends Phaser.Scene {
       "normal-girl", "normal-boy", "unicorn", "witch", "princess", "mermaid",
       "fairy", "dragon-rider", "star-explorer", "crystal-knight"
     ];
-    for (const id of heroIds) this.load.image("hero-art-" + id, "assets/characters/" + id + ".webp");
+    for (const id of heroIds) this.load.image("hero-art-" + id, getCharacterArtUrl(id));
 
   }
 
