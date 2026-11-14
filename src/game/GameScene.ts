@@ -113,9 +113,9 @@ export class GameScene extends Phaser.Scene {
     this.load.image("hero-art-normal-girl", getCharacterArtUrl("normal-girl"));
     this.load.image("hero-art-normal-boy", getCharacterArtUrl("normal-boy"));
     this.load.image("world-atlas", getWorldAtlasUrl());
-    this.load.spritesheet("world-bg-atlas", "assets/worlds/world-atlas-hd.webp", {
-      frameWidth: 576,
-      frameHeight: 384
+    this.load.spritesheet("world-bg-atlas", "assets/worlds/world-atlas-hd.jpg", {
+      frameWidth: 480,
+      frameHeight: 320
     });
   }
 
@@ -705,7 +705,7 @@ export class GameScene extends Phaser.Scene {
       if (hdOcean) {
         const ocean = this.add.tileSprite(0, 0, WORLD_LENGTH, height, "world-bg-atlas", 0)
           .setOrigin(0, 0).setDepth(-7).setScrollFactor(0.14);
-        ocean.setTileScale(height / 384, height / 384);
+        ocean.setTileScale(height / 320, height / 320);
       } else {
         const water = this.add.graphics().setDepth(-7);
         water.fillGradientStyle(0x39d9f2, 0x19a6d5, 0x075a9c, 0x032d61, 1);
@@ -808,7 +808,7 @@ export class GameScene extends Phaser.Scene {
         ? this.add.tileSprite(0, 0, WORLD_LENGTH, height, "world-bg-atlas", selectedFrame)
         : this.add.tileSprite(0, 0, WORLD_LENGTH, height, "world-atlas", this.session.world.backdrop);
       background.setOrigin(0, 0).setDepth(-6).setScrollFactor(0.16);
-      const backgroundScale = hasHdBackdrop ? height / 384 : height / 540;
+      const backgroundScale = hasHdBackdrop ? height / 320 : height / 540;
       background.setTileScale(backgroundScale, backgroundScale);
       for (let i = 0; i < 16; i++) {
         const x = 65 + i * 205;
