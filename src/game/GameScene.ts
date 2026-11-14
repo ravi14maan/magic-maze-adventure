@@ -37,7 +37,9 @@ const SUPPLIED_ART_BY_CHARACTER: Record<CharacterId, CharacterId> = {
   fairy: "fairy",
   "dragon-rider": "dragon-rider",
   "star-explorer": "star-explorer",
-  "crystal-knight": "crystal-knight"
+  "crystal-knight": "crystal-knight",
+  prince: "prince",
+  "ice-mage": "ice-mage"
 };
 const HERO_ATLAS_ROW: Record<CharacterId, number> = {
   "normal-girl": 0,
@@ -52,7 +54,9 @@ const HERO_ATLAS_ROW: Record<CharacterId, number> = {
   fairy: 6,
   "dragon-rider": 7,
   "star-explorer": 8,
-  "crystal-knight": 9
+  "crystal-knight": 9,
+  prince: 10,
+  "ice-mage": 11
 };
 
 export class GameScene extends Phaser.Scene {
@@ -105,7 +109,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload(): void {
-    this.load.image("hero-roster-atlas", getCharacterArtUrl("normal-girl"));
+    this.load.image("hero-roster-atlas", getCharacterArtUrl("unicorn"));
+    this.load.image("hero-art-normal-girl", getCharacterArtUrl("normal-girl"));
+    this.load.image("hero-art-normal-boy", getCharacterArtUrl("normal-boy"));
     this.load.image("world-atlas", getWorldAtlasUrl());
     this.load.spritesheet("world-bg-atlas", "assets/worlds/world-atlas-hd.webp", {
       frameWidth: 576,
@@ -980,8 +986,8 @@ export class GameScene extends Phaser.Scene {
     const frameWidth = 128;
     const frameHeight = 192;
     const ids: CharacterId[] = [
-      "normal-girl", "normal-boy", "unicorn", "witch", "princess",
-      "mermaid", "fairy", "dragon-rider", "star-explorer", "crystal-knight"
+      "normal-girl", "normal-boy", "unicorn", "witch", "princess", "mermaid",
+      "fairy", "dragon-rider", "star-explorer", "crystal-knight", "prince", "ice-mage"
     ];
     const sheet = this.textures.get("hero-roster-atlas").getSourceImage() as HTMLImageElement;
     const atlas = document.createElement("canvas");
@@ -997,17 +1003,25 @@ export class GameScene extends Phaser.Scene {
       sourceCell.height = position.cellHeight;
       const sourceContext = sourceCell.getContext("2d");
       if (!sourceContext) return sourceCell;
-      sourceContext.drawImage(
-        sheet,
-        position.column * position.cellWidth,
-        position.row * position.cellHeight,
-        position.cellWidth,
-        position.cellHeight,
-        0,
-        0,
-        position.cellWidth,
-        position.cellHeight
-      );
+      if (id === "normal-girl" || id === "normal-boy") {
+        const starterImage = this.textures.get("hero-art-" + id).getSourceImage() as HTMLImageElement;
+        const fit = Math.min(position.cellWidth / starterImage.width, position.cellHeight / starterImage.height);
+        const drawWidth = starterImage.width * fit;
+        const drawHeight = starterImage.height * fit;
+        sourceContext.drawImage(starterImage, (position.cellWidth - drawWidth) / 2, position.cellHeight - drawHeight, drawWidth, drawHeight);
+      } else {
+        sourceContext.drawImage(
+          sheet,
+          position.column * position.cellWidth,
+          position.row * position.cellHeight,
+          position.cellWidth,
+          position.cellHeight,
+          0,
+          0,
+          position.cellWidth,
+          position.cellHeight
+        );
+      }
 
       const frame = document.createElement("canvas");
       frame.width = frameWidth;
