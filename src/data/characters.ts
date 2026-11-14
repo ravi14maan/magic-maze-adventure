@@ -11,7 +11,8 @@ export type CharacterId =
   | "fairy"
   | "dragon-rider"
   | "star-explorer"
-  | "crystal-knight";
+  | "crystal-knight"
+  | "ice-mage";
 
 export interface CharacterDefinition {
   id: CharacterId;
@@ -35,8 +36,9 @@ export const CHARACTERS: readonly CharacterDefinition[] = [
   { id: "dragon-rider", name: "Dragon Rider", token: "🐉", colour: 0x3ba99a, coinCost: 900, powerPoints: 950, initiallyUnlocked: false, description: "A fearless explorer and her baby dragon" },
   { id: "star-explorer", name: "Star Explorer", token: "🚀", colour: 0x3f78c4, coinCost: 350, powerPoints: 600, initiallyUnlocked: false, description: "A young space traveller who follows the stars" },
   { id: "crystal-knight", name: "Crystal Knight", token: "🛡️", colour: 0x9877e8, coinCost: 650, powerPoints: 800, initiallyUnlocked: false, description: "A brave protector with a crystal shield" },
-  // Legacy IDs remain valid for existing local saves; the closet uses the art-ready roster below.
-  { id: "prince", name: "Prince", token: "🤴", colour: 0x6c91d8, coinCost: 500, powerPoints: 700, initiallyUnlocked: false, description: "A fearless royal adventurer" },
+  { id: "prince", name: "Prince", token: "🤴", colour: 0x6c91d8, coinCost: 500, powerPoints: 700, initiallyUnlocked: false, description: "A brave royal adventurer with a shining cloak" },
+  { id: "ice-mage", name: "Ice Mage", token: "🧊", colour: 0x83c9f5, coinCost: 850, powerPoints: 900, initiallyUnlocked: false, description: "A winter spellcaster with a crystal snow wand" },
+  // Legacy IDs remain valid for older local saves.
   { id: "male-explorer", name: "Male Explorer", token: "🧭", colour: 0xc58c56, coinCost: 350, powerPoints: 550, initiallyUnlocked: false, description: "Always ready for a new trail" },
   { id: "knight", name: "Knight", token: "🛡️", colour: 0x91a5b8, coinCost: 650, powerPoints: 750, initiallyUnlocked: false, description: "A guardian of the magic worlds" }
 ] as const;
@@ -44,7 +46,7 @@ export const CHARACTERS: readonly CharacterDefinition[] = [
 // Ahana's six supplied heroes plus four original new heroes.
 export const ART_READY_CHARACTER_IDS: readonly CharacterId[] = [
   "normal-girl", "normal-boy", "unicorn", "witch", "princess", "mermaid",
-  "fairy", "dragon-rider", "star-explorer", "crystal-knight"
+  "fairy", "dragon-rider", "star-explorer", "crystal-knight", "prince", "ice-mage"
 ];
 
 export const STARTING_CHARACTER_IDS: readonly CharacterId[] = [
