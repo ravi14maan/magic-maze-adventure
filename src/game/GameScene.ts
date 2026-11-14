@@ -15,7 +15,7 @@ export interface MazeProgress { hearts: number; coins: number; gems: number; has
 export interface MazeReward { coins: number; gems: number; stars: number; challenge: ChallengeType }
 
 type ObstacleKind = "log" | "rock" | "branch" | "monster";
-interface Obstacle { x: number; kind: ObstacleKind; sprite: Phaser.GameObjects.Text; handled: boolean; prompted: boolean; actionStarted: boolean; bumped: boolean }
+interface Obstacle { x: number; kind: ObstacleKind; sprite: Phaser.GameObjects.GameObject; handled: boolean; prompted: boolean; actionStarted: boolean; bumped: boolean }
 interface Pickup { x: number; y: number; kind: "coin" | "gem"; sprite: Phaser.GameObjects.Text; collected: boolean }
 interface Gap { left: number; right: number }
 
@@ -40,9 +40,13 @@ const HERO_ATLAS_ROW: Record<CharacterId, number> = {
   witch: 3,
   princess: 4,
   prince: 4,
-  "male-explorer": 1,
-  knight: 1,
-  mermaid: 5
+  "male-explorer": 8,
+  knight: 9,
+  mermaid: 5,
+  fairy: 6,
+  "dragon-rider": 7,
+  "star-explorer": 8,
+  "crystal-knight": 9
 };
 
 export class GameScene extends Phaser.Scene {
@@ -95,9 +99,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload(): void {
-    for (const id of ["normal-girl", "normal-boy", "unicorn", "witch", "princess", "mermaid"] as CharacterId[]) {
-      this.load.image("hero-art-" + id, "assets/characters/" + id + ".webp");
-    }
+    const heroIds: CharacterId[] = [
+      "normal-girl", "normal-boy", "unicorn", "witch", "princess", "mermaid",
+      "fairy", "dragon-rider", "star-explorer", "crystal-knight"
+    ];
+    for (const id of heroIds) this.load.image("hero-art-" + id, "assets/characters/" + id + ".webp");
+
+    const backdrops = ["underwater", "candy", "forest", "crystal", "sky", "volcano", "desert"];
+    for (const backdrop of backdrops) this.load.image("world-bg-" + backdrop, "assets/worlds/" + backdrop + ".webp");
   }
 
   create(): void {
@@ -401,7 +410,12 @@ export class GameScene extends Phaser.Scene {
       ["👑", "🏰", "🛡️", "✨", "💫"],
       ["👻", "🌙", "🦇", "✨", "🕯️"],
       ["🧚", "🌸", "🦋", "✨", "🌷"],
-      ["💎", "🔷", "🔮", "✨", "🪩"]
+      ["💎", "🔷", "🔮", "✨", "🪩"],
+      ["🐉", "🥚", "🌿", "✨", "🪽"],
+      ["☁️", "🏝️", "🪽", "✨", "⭐"],
+      ["🌋", "🔥", "🌋", "✨", "🪨"],
+      ["🏜️", "🏺", "🐪", "✨", "🌵"],
+      ["🌈", "🏙️", "⭐", "✨", "🎈"]
     ];
     const symbols = themes[this.session.worldIndex] ?? themes[0]!;
     const itemCount = underwater ? 20 : 15;
@@ -450,8 +464,20 @@ export class GameScene extends Phaser.Scene {
     const floor = this.session.world.floor;
     const accent = this.session.world.accent;
     const underwater = this.session.worldIndex === 0;
+    const backdropKey = "world-bg-" + this.session.world.backdrop;
+    const hasArtworkBackdrop = this.textures.exists(backdropKey);
+    if (hasArtworkBackdrop) {
+      const source = this.textures.get(backdropKey).getSourceImage() as HTMLImageElement;
+      const tileScale = height / Math.max(1, source.height);
+      this.add.tileSprite(0, 0, WORLD_LENGTH, height, backdropKey)
+        .setOrigin(0, 0)
+        .setTileScale(tileScale, tileScale)
+        .setAlpha(0.92)
+        .setScrollFactor(0.22)
+        .setDepth(-5);
+    }
 
-    if (underwater) {
+    if (underwater && !hasArtworkBackdrop) {
       // Deep-to-surface ocean gradient: bright shafts above, rich blue water below.
       const water = this.add.graphics();
       water.fillGradientStyle(0x39d9f2, 0x19a6d5, 0x075a9c, 0x032d61, 1);
@@ -545,16 +571,19 @@ export class GameScene extends Phaser.Scene {
         const bubble = this.add.circle(x, y, radius, 0xc9f8ff, 0.12).setStrokeStyle(1.5, 0xe7ffff, 0.58);
         this.tweens.add({ targets: bubble, y: y - 40 - (i % 4) * 8, alpha: 0.03, duration: 2800 + (i % 5) * 420, yoyo: true, repeat: -1 });
       }
-    } else {
+    } else if (!hasArtworkBackdrop) {
       this.add.rectangle(WORLD_LENGTH / 2, height / 2, WORLD_LENGTH, height, Number.parseInt(sky.replace("#", ""), 16));
       for (let i = 0; i < 16; i++) {
         const x = 65 + i * 205;
         this.add.ellipse(x, this.groundY - 54 - (i % 3) * 15, 340, 150, accent, 0.20);
-        const scenery = this.session.worldIndex === 1 ? ["🍭", "🍬", "🍩"] :
-          this.session.worldIndex === 4 ? ["🌲", "⛄", "❄️"] :
-          this.session.worldIndex === 5 ? ["🪐", "⭐", "🚀"] :
-          this.session.worldIndex === 6 ? ["🏰", "🛡️", "👑"] :
-          this.session.worldIndex === 8 ? ["🌷", "🧚", "🦋"] : ["🌳", "🌼", "🍄"];
+        const sceneryByWorld: string[][] = [
+          ["🐠", "🪸", "🐬"], ["🍭", "🍬", "🍩"], ["🌳", "🌼", "🍄"],
+          ["🦇", "🔮", "🕸️"], ["🌲", "⛄", "❄️"], ["🪐", "⭐", "🚀"],
+          ["🏰", "🛡️", "👑"], ["👻", "🌙", "🦇"], ["🌷", "🧚", "🦋"],
+          ["💎", "🔷", "🔮"], ["🐉", "🥚", "🏞️"], ["☁️", "🏝️", "🪽"],
+          ["🌋", "🔥", "🪨"], ["🏜️", "🏺", "🐪"], ["🌈", "🏙️", "⭐"]
+        ];
+        const scenery = sceneryByWorld[this.session.worldIndex] ?? ["🌳", "🌼", "🍄"];
         this.add.text(x, this.groundY - 115 - (i % 2) * 24, scenery[i % scenery.length]!, {
           fontFamily: "system-ui", fontSize: "43px"
         });
@@ -627,13 +656,45 @@ export class GameScene extends Phaser.Scene {
     obstacleDefs.sort((a, b) => a[0] - b[0]);
 
     for (const [x, kind] of obstacleDefs) {
-      const icon: Record<ObstacleKind, string> = { log: "🪵", rock: "🪨", branch: "🌿", monster: "👾" };
+      let sprite: Phaser.GameObjects.GameObject;
       const y = kind === "branch" ? this.groundY - 150 : this.groundY - 27;
-      const sprite = this.add.text(x, y, icon[kind], {
-        fontFamily: "system-ui", fontSize: kind === "branch" ? "49px" : "42px"
-      }).setOrigin(0.5);
-      if (kind === "rock") this.tweens.add({ targets: sprite, x: x + 22 + difficulty.rank * 2, duration: Math.max(260, 620 / difficulty.obstacleSpeed), yoyo: true, repeat: -1 });
-      if (kind === "monster") this.tweens.add({ targets: sprite, y: y - 11 - difficulty.rank, angle: 7, duration: Math.max(300, 680 / difficulty.obstacleSpeed), yoyo: true, repeat: -1 });
+      if (kind === "monster") {
+        const monster = this.add.container(x, y).setDepth(14);
+        const body = this.add.graphics();
+        body.fillStyle(0x633bc2, 1);
+        body.fillRoundedRect(-29, -29, 58, 54, 20);
+        body.fillTriangle(-24, -16, -34, -43, -7, -28);
+        body.fillTriangle(24, -16, 34, -43, 7, -28);
+        body.fillStyle(0x8f66ea, 1);
+        body.fillCircle(-16, -20, 10);
+        body.fillCircle(16, -20, 10);
+        body.fillStyle(0xffffff, 1);
+        body.fillEllipse(-12, -5, 14, 18);
+        body.fillEllipse(12, -5, 14, 18);
+        body.fillStyle(0x1b1641, 1);
+        body.fillCircle(-10, -3, 5);
+        body.fillCircle(10, -3, 5);
+        body.fillStyle(0xfff5a6, 1);
+        body.fillTriangle(-13, 10, -6, 10, -10, 18);
+        body.fillTriangle(7, 10, 14, 10, 10, 18);
+        body.lineStyle(3, 0x341c76, 1);
+        body.beginPath(); body.arc(0, 4, 13, 0.2, Math.PI - 0.2, false); body.strokePath();
+        body.fillStyle(0x48e5d1, 1);
+        body.fillCircle(-26, 11, 5);
+        body.fillCircle(26, 11, 5);
+        monster.add(body);
+        const eyesGlow = this.add.circle(0, -5, 27, 0xffdb5e, 0.08);
+        monster.add(eyesGlow);
+        this.tweens.add({ targets: monster, y: y - 12 - difficulty.rank, angle: 5, duration: Math.max(320, 760 / difficulty.obstacleSpeed), yoyo: true, repeat: -1 });
+        sprite = monster;
+      } else {
+        const icon: Record<Exclude<ObstacleKind, "monster">, string> = { log: "🪵", rock: "🪨", branch: "🌿" };
+        const text = this.add.text(x, y, icon[kind], {
+          fontFamily: "system-ui", fontSize: kind === "branch" ? "49px" : "42px"
+        }).setOrigin(0.5).setDepth(14);
+        if (kind === "rock") this.tweens.add({ targets: text, x: x + 22 + difficulty.rank * 2, duration: Math.max(260, 620 / difficulty.obstacleSpeed), yoyo: true, repeat: -1 });
+        sprite = text;
+      }
       this.obstacles.push({ x, kind, sprite, handled: false, prompted: false, actionStarted: false, bumped: false });
     }
 
@@ -679,7 +740,7 @@ export class GameScene extends Phaser.Scene {
   private buildHeroRunAtlas(): void {
     const frameWidth = 128;
     const frameHeight = 192;
-    const ids: CharacterId[] = ["normal-girl", "normal-boy", "unicorn", "witch", "princess", "mermaid"];
+    const ids: CharacterId[] = ["normal-girl", "normal-boy", "unicorn", "witch", "princess", "mermaid", "fairy", "dragon-rider", "star-explorer", "crystal-knight"];
     const atlas = document.createElement("canvas");
     atlas.width = frameWidth * 4;
     atlas.height = frameHeight * ids.length;
@@ -890,7 +951,11 @@ export class GameScene extends Phaser.Scene {
       this.rightLeg = this.add.graphics();
       this.leftArm = this.add.graphics();
       this.rightArm = this.add.graphics();
-      const children: Phaser.GameObjects.GameObject[] = [shadow, heroImage];
+      const wardrobe = this.session.appearance ?? { hairstyle: "🌸", outfit: "👗", accessory: "✨" };
+      const hairBadge = this.add.text(-48, -178, wardrobe.hairstyle, { fontFamily: "system-ui", fontSize: "19px" }).setOrigin(0.5);
+      const outfitBadge = this.add.text(48, -94, wardrobe.outfit, { fontFamily: "system-ui", fontSize: "18px" }).setOrigin(0.5);
+      const accessoryBadge = this.add.text(48, -171, wardrobe.accessory, { fontFamily: "system-ui", fontSize: "17px" }).setOrigin(0.5);
+      const children: Phaser.GameObjects.GameObject[] = [shadow, heroImage, hairBadge, outfitBadge, accessoryBadge];
       this.player = this.add.container(120, this.groundY, children).setDepth(20);
       return;
     }
