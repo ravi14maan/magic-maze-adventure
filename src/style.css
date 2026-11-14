@@ -400,3 +400,19 @@ input:focus{border-color:#b48cce;box-shadow:0 0 0 3px #eadcf4}
   .wardrobe-live-copy p,.wardrobe-live-copy li{font-size:10.5px}
   .wardrobe-live-item{min-width:25px;height:25px;font-size:15px}
 }
+
+
+/* Transparent 10-hero atlas: the same art is used in cards, wardrobe and play. */
+.hero-art-portrait{
+  display:block;width:100%;height:100%;max-width:100%;max-height:100%;
+  background-repeat:no-repeat;background-color:transparent;
+  object-fit:unset;object-position:center bottom;mix-blend-mode:normal;
+  filter:drop-shadow(0 8px 10px rgba(25,25,55,.20));
+  position:relative;z-index:1
+}
+.wardrobe-live-figure .hero-art-portrait{width:100%;height:100%}
+.hero-portrait{background:radial-gradient(ellipse at 50% 73%,#fff 0%,#fff4da 50%,#b8f2ff 100%)}
+.world-art{background-repeat:no-repeat;background-size:400% 400%;background-position:center}
+.world-art::before{background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(12,19,44,.06))}
+.world-card .world-art{box-shadow:inset 0 0 0 1px rgba(255,255,255,.26)}
+@media(max-width:380px){.hero-portrait{height:148px!important;min-height:148px!important}}

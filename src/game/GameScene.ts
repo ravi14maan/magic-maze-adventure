@@ -1,7 +1,8 @@
 import Phaser from "phaser";
 import type { CharacterId } from "../data/characters";
 import { difficultyForLevel, type ChallengeType, type WorldDefinition } from "../data/worlds";
-import { getCharacterArtUrl } from "../data/characterArt";
+import { getCharacterArtUrl, getCharacterArtPosition } from "../data/characterArt";
+import { WORLD_ART_ORDER } from "../data/worldArt";
 import type { CharacterWardrobe } from "../data/profiles";
 
 export interface MazeSession {
@@ -104,11 +105,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload(): void {
-    const heroIds: CharacterId[] = [
-      "normal-girl", "normal-boy", "unicorn", "witch", "princess", "mermaid",
-      "fairy", "dragon-rider", "star-explorer", "crystal-knight"
-    ];
-    for (const id of heroIds) this.load.image("hero-art-" + id, getCharacterArtUrl(id));
+    this.load.image("hero-roster-atlas", getCharacterArtUrl("normal-girl"));
+    this.load.image("world-atlas", "assets/worlds/world-atlas.svg");
 
   }
 
@@ -120,6 +118,7 @@ export class GameScene extends Phaser.Scene {
     this.autoWalkEnabled = false;
     this.gapZones = this.buildGapLayout();
     this.buildHeroRunAtlas();
+    this.buildWorldAtlasFrames();
     this.cameras.main.setBackgroundColor(this.session.world.sky);
     this.drawWorld(width, height);
     this.drawHero();
@@ -787,16 +786,10 @@ export class GameScene extends Phaser.Scene {
         this.tweens.add({ targets: bubble, y: y - 40 - (i % 4) * 8, alpha: 0.03, duration: 2800 + (i % 5) * 420, yoyo: true, repeat: -1 });
       }
     } else {
-      const gradient = this.add.graphics();
-      gradient.fillGradientStyle(
-        Number.parseInt(sky.replace("#", ""), 16),
-        Number.parseInt(sky.replace("#", ""), 16),
-        this.session.world.floor,
-        this.session.world.wall,
-        1
-      );
-      gradient.fillRect(0, 0, WORLD_LENGTH, height).setDepth(-4);
-      this.add.rectangle(WORLD_LENGTH / 2, height / 2, WORLD_LENGTH, height, Number.parseInt(sky.replace("#", ""), 16), 0.08);
+      const background = this.add.tileSprite(
+        0, 0, WORLD_LENGTH, height, "world-atlas", this.session.world.backdrop
+      ).setOrigin(0, 0).setDepth(-6).setScrollFactor(0.16);
+      background.setTileScale(height / 540, height / 540);
       for (let i = 0; i < 16; i++) {
         const x = 65 + i * 205;
         this.add.ellipse(x, this.groundY - 54 - (i % 3) * 15, 340, 150, accent, 0.20);
@@ -962,94 +955,56 @@ export class GameScene extends Phaser.Scene {
     }).setOrigin(0.5, 0).setScrollFactor(0);
   }
 
+  private buildWorldAtlasFrames(): void {
+    const atlas = this.textures.get("world-atlas");
+    WORLD_ART_ORDER.forEach((backdrop, index) => {
+      atlas.add(backdrop, 0, (index % 4) * 960, Math.floor(index / 4) * 540, 960, 540);
+    });
+  }
+
   private buildHeroRunAtlas(): void {
     const frameWidth = 128;
     const frameHeight = 192;
-    const ids: CharacterId[] = ["normal-girl", "normal-boy", "unicorn", "witch", "princess", "mermaid", "fairy", "dragon-rider", "star-explorer", "crystal-knight"];
+    const ids: CharacterId[] = [
+      "normal-girl", "normal-boy", "unicorn", "witch", "princess",
+      "mermaid", "fairy", "dragon-rider", "star-explorer", "crystal-knight"
+    ];
+    const sheet = this.textures.get("hero-roster-atlas").getSourceImage() as HTMLImageElement;
     const atlas = document.createElement("canvas");
     atlas.width = frameWidth * 4;
     atlas.height = frameHeight * ids.length;
-    const atlasContext = atlas.getContext("2d", { willReadFrequently: true });
-    if (!atlasContext) return;
+    const atlasContext = atlas.getContext("2d");
+    if (!atlasContext || !sheet) return;
 
-    const makeTransparent = (source: HTMLImageElement, id: CharacterId): HTMLCanvasElement => {
-      const cell = document.createElement("canvas");
-      cell.width = frameWidth;
-      cell.height = frameHeight;
-      const ctx = cell.getContext("2d", { willReadFrequently: true });
-      if (!ctx) return cell;
+    const makeCharacterFrame = (id: CharacterId): HTMLCanvasElement => {
+      const position = getCharacterArtPosition(id);
+      const sourceCell = document.createElement("canvas");
+      sourceCell.width = position.cellWidth;
+      sourceCell.height = position.cellHeight;
+      const sourceContext = sourceCell.getContext("2d");
+      if (!sourceContext) return sourceCell;
+      sourceContext.drawImage(
+        sheet,
+        position.column * position.cellWidth,
+        position.row * position.cellHeight,
+        position.cellWidth,
+        position.cellHeight,
+        0,
+        0,
+        position.cellWidth,
+        position.cellHeight
+      );
 
-      const maxWidth = 116;
-      const maxHeight = 174;
-      const scale = Math.min(maxWidth / source.naturalWidth, maxHeight / source.naturalHeight);
-      const drawWidth = Math.max(1, Math.round(source.naturalWidth * scale));
-      const drawHeight = Math.max(1, Math.round(source.naturalHeight * scale));
-      const offsetX = Math.round((frameWidth - drawWidth) / 2);
-      const offsetY = frameHeight - drawHeight - 5;
-      ctx.drawImage(source, offsetX, offsetY, drawWidth, drawHeight);
-
-      const image = ctx.getImageData(0, 0, frameWidth, frameHeight);
-      const data = image.data;
-      const visited = new Uint8Array(frameWidth * frameHeight);
-      const stack: number[] = [];
-      const index = (x: number, y: number): number => y * frameWidth + x;
-      const isBackground = (x: number, y: number): boolean => {
-        const p = index(x, y) * 4;
-        const r = data[p]!;
-        const g = data[p + 1]!;
-        const b = data[p + 2]!;
-        if (data[p + 3] === 0) return true;
-        if (id === "mermaid") {
-          // The mermaid source uses a turquoise studio backdrop. Remove only
-          // colours close to the sampled background in the source-image corners.
-          const samplePoints = [
-            [offsetX + 2, offsetY + 2],
-            [offsetX + drawWidth - 3, offsetY + 2],
-            [offsetX + 2, offsetY + drawHeight - 3],
-            [offsetX + drawWidth - 3, offsetY + drawHeight - 3]
-          ];
-          let sr = 0, sg = 0, sb = 0, count = 0;
-          for (const [sx, sy] of samplePoints) {
-            if (sx! >= 0 && sy! >= 0 && sx! < frameWidth && sy! < frameHeight) {
-              const si = index(sx!, sy!) * 4;
-              sr += data[si]!; sg += data[si + 1]!; sb += data[si + 2]!; count++;
-            }
-          }
-          const br = sr / Math.max(1, count);
-          const bg = sg / Math.max(1, count);
-          const bb = sb / Math.max(1, count);
-          const distance = Math.hypot(r - br, g - bg, b - bb);
-          return distance < 57;
-        }
-        const max = Math.max(r, g, b);
-        const min = Math.min(r, g, b);
-        return min > 190 && max - min < 58;
-      };
-
-      // Flood-fill only background connected to the outer image edge. Enclosed
-      // pale parts of the unicorn/princess/girl artwork remain opaque.
-      for (let x = 0; x < frameWidth; x++) {
-        stack.push(index(x, 0), index(x, frameHeight - 1));
-      }
-      for (let y = 0; y < frameHeight; y++) {
-        stack.push(index(0, y), index(frameWidth - 1, y));
-      }
-      while (stack.length) {
-        const current = stack.pop()!;
-        if (visited[current]) continue;
-        visited[current] = 1;
-        const x = current % frameWidth;
-        const y = Math.floor(current / frameWidth);
-        if (!isBackground(x, y)) continue;
-        const pixel = current * 4;
-        data[pixel + 3] = 0;
-        if (x > 0) stack.push(current - 1);
-        if (x < frameWidth - 1) stack.push(current + 1);
-        if (y > 0) stack.push(current - frameWidth);
-        if (y < frameHeight - 1) stack.push(current + frameWidth);
-      }
-      ctx.putImageData(image, 0, 0);
-      return cell;
+      const frame = document.createElement("canvas");
+      frame.width = frameWidth;
+      frame.height = frameHeight;
+      const frameContext = frame.getContext("2d");
+      if (!frameContext) return frame;
+      const scale = Math.min(118 / position.cellWidth, 178 / position.cellHeight);
+      const width = position.cellWidth * scale;
+      const height = position.cellHeight * scale;
+      frameContext.drawImage(sourceCell, (frameWidth - width) / 2, frameHeight - height - 4, width, height);
+      return frame;
     };
 
     const drawPose = (
@@ -1066,7 +1021,6 @@ export class GameScene extends Phaser.Scene {
         return;
       }
       if (frame === 3) {
-        // Jump frame: whole figure lifts and leans forward.
         ctx.save();
         ctx.translate(x + frameWidth / 2, top + frameHeight * 0.56);
         ctx.rotate(-0.075);
@@ -1075,11 +1029,13 @@ export class GameScene extends Phaser.Scene {
         ctx.restore();
         return;
       }
+
       const phase = frame === 1 ? 1 : -1;
-      if (id === "normal-girl" || id === "normal-boy") {
-        // Separate the lower half into alternating left/right leg swings.
-        // This makes the feet visibly travel back and forward in the run cycle.
-        const cutY = Math.floor(frameHeight * (id === "normal-boy" ? 0.70 : 0.76));
+      const nonHuman = id === "unicorn" || id === "mermaid";
+      if (!nonHuman) {
+        const cutY = Math.floor(frameHeight * (
+          id === "normal-boy" || id === "star-explorer" || id === "crystal-knight" ? 0.69 : 0.73
+        ));
         ctx.save();
         ctx.beginPath(); ctx.rect(x, top + cutY, frameWidth / 2, frameHeight - cutY); ctx.clip();
         ctx.translate(x + frameWidth * 0.25, top + cutY);
@@ -1096,36 +1052,24 @@ export class GameScene extends Phaser.Scene {
         ctx.drawImage(base, x, top);
         ctx.restore();
 
-        // Repaint the head and torso unchanged to keep the face and dress steady.
         ctx.save();
         ctx.beginPath(); ctx.rect(x, top, frameWidth, cutY + 2); ctx.clip();
         ctx.drawImage(base, x, top);
         ctx.restore();
         return;
       }
-      // Fantasy creatures keep their silhouette while the body/tail/broom sways.
+
       ctx.save();
       ctx.translate(x + frameWidth / 2, top + frameHeight * 0.56);
-      ctx.rotate(phase * (id === "mermaid" ? 0.07 : 0.035));
+      ctx.rotate(phase * (id === "mermaid" ? 0.075 : 0.045));
       ctx.translate(-(x + frameWidth / 2), -(top + frameHeight * 0.56));
       ctx.drawImage(base, x, top + (frame === 1 ? -2 : 0));
       ctx.restore();
     };
 
     ids.forEach((id, row) => {
-      const textureKey = "hero-art-" + id;
-      if (!this.textures.exists(textureKey)) {
-        // Keep the supplied roster usable even if an individual image fails
-        // to decode: reuse the closest available supplied art.
-        const fallbackId: CharacterId = id === "witch" ? "princess" : "normal-boy";
-        if (!this.textures.exists("hero-art-" + fallbackId)) return;
-      }
-      const source = this.textures.get(this.textures.exists(textureKey) ? textureKey : "hero-art-" + (id === "witch" ? "princess" : "normal-boy")).getSourceImage() as HTMLImageElement;
-      if (!source || !source.width || !source.height) return;
-      const base = makeTransparent(source, id);
-      for (let frame = 0; frame < 4; frame++) {
-        drawPose(atlasContext, base, frame * frameWidth, row, frame, id);
-      }
+      const base = makeCharacterFrame(id);
+      for (let frame = 0; frame < 4; frame++) drawPose(atlasContext, base, frame * frameWidth, row, frame, id);
     });
 
     if (this.textures.exists("hero-run-atlas")) this.textures.remove("hero-run-atlas");
@@ -1134,14 +1078,7 @@ export class GameScene extends Phaser.Scene {
     for (let row = 0; row < ids.length; row++) {
       for (let frame = 0; frame < 4; frame++) {
         const frameIndex = row * 4 + frame;
-        atlasTexture.add(
-          String(frameIndex),
-          0,
-          frame * frameWidth,
-          row * frameHeight,
-          frameWidth,
-          frameHeight
-        );
+        atlasTexture.add(String(frameIndex), 0, frame * frameWidth, row * frameHeight, frameWidth, frameHeight);
       }
     }
   }

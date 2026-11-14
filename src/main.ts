@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { ART_READY_CHARACTER_IDS, CHARACTERS, type CharacterId } from "./data/characters";
-import { getCharacterArtUrl } from "./data/characterArt";
+import { getCharacterArtBackgroundStyle } from "./data/characterArt";
+import { getWorldArtStyle } from "./data/worldArt";
 import {
   AVATAR_ACCESSORIES, AVATAR_BACKGROUNDS, AVATAR_EMOJIS, HAIRSTYLES, OUTFITS,
   activeProfile, addProfile, loadStore, saveStore, updateProfile,
@@ -138,7 +139,7 @@ function renderWorlds(): void {
           const done = [1,2,3,4,5].filter(n => p.completedLevels.includes(levelKey(i,n))).length;
           return `
             <button class="world-card ${unlocked ? "" : "locked"}" data-action="world" data-index="${i}" ${unlocked ? "" : "disabled"}>
-              <div class="world-art world-art-${world.backdrop}" style="--world-bg:${world.sky};--world-wall:#${world.wall.toString(16).padStart(6,"0")}"><span>${world.icon}</span><i>${unlocked ? "✦" : "🔒"}</i></div>
+              <div class="world-art world-art-${world.backdrop}" style="${getWorldArtStyle(world.backdrop)};--world-bg:${world.sky};--world-wall:#${world.wall.toString(16).padStart(6,"0")}"><span>${world.icon}</span><i>${unlocked ? "✦" : "🔒"}</i></div>
               <strong>${world.name}</strong><small>${world.description}</small>
               <span class="world-progress">${unlocked ? `${done}/5 levels complete` : "Complete the world before this one"}</span>
             </button>`;
@@ -188,7 +189,7 @@ function renderLevels(): void {
 
 function renderHeroPortrait(id: CharacterId): string {
   const readableName = id.replaceAll("-", " ");
-  return '<img class="hero-art-portrait" src="' + getCharacterArtUrl(id) + '" alt="' + readableName + '" loading="lazy">';
+  return '<div class="hero-art-portrait" role="img" aria-label="' + readableName + '" style="' + getCharacterArtBackgroundStyle(id) + '"></div>';
 }
 
 function renderCharacters(): void {
