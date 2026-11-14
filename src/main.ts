@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { ART_READY_CHARACTER_IDS, CHARACTERS, type CharacterId } from "./data/characters";
+import { getCharacterArtUrl } from "./data/characterArt";
 import {
   AVATAR_ACCESSORIES, AVATAR_BACKGROUNDS, AVATAR_EMOJIS, HAIRSTYLES, OUTFITS,
   activeProfile, addProfile, loadStore, saveStore, updateProfile,
@@ -186,23 +187,8 @@ function renderLevels(): void {
 }
 
 function renderHeroPortrait(id: CharacterId): string {
-  const artFiles: Record<CharacterId, string> = {
-    "normal-girl": "normal-girl",
-    "normal-boy": "normal-boy",
-    unicorn: "unicorn",
-    witch: "witch",
-    princess: "princess",
-    mermaid: "mermaid",
-    fairy: "fairy",
-    "dragon-rider": "dragon-rider",
-    "star-explorer": "star-explorer",
-    "crystal-knight": "crystal-knight",
-    prince: "princess",
-    "male-explorer": "star-explorer",
-    knight: "crystal-knight"
-  };
   const readableName = id.replaceAll("-", " ");
-  return '<img class="hero-art-portrait" src="assets/characters/' + artFiles[id] + '.webp" alt="' + readableName + '" loading="lazy">';
+  return '<img class="hero-art-portrait" src="' + getCharacterArtUrl(id) + '" alt="' + readableName + '" loading="lazy">';
 }
 
 function renderCharacters(): void {
