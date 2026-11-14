@@ -1562,7 +1562,11 @@ export class GameScene extends Phaser.Scene {
       { series: ["1", "2", "4", "8", "16", "?"], answer: "32", choices: ["24", "30", "32", "36"] }
     ];
     const puzzle = patterns[(this.session.worldIndex * 3 + this.session.levelNumber + difficulty.rank) % patterns.length]!;
-    const panel = this.createPanel("Monster Pattern", "Spot the pattern in the creature trail.", "👾");
+    const panel = this.createPanel("Monster Pattern", "A monster guards this pattern gate. Solve its clue to continue.", "👾");
+    const monsterBanner = document.createElement("div");
+    monsterBanner.className = "challenge-monster";
+    monsterBanner.innerHTML = '<div class="challenge-monster-face">👹</div><div class="challenge-monster-copy"><strong>Grumble the Gatekeeper</strong><small>“Solve my sequence and I will open the path!”</small></div>';
+    this.challengeContent(panel).append(monsterBanner);
     this.addChallengeText(panel, "Study the repeating pattern or number sequence. Which symbol belongs next?");
     this.addChallengeCountdown(panel, "Time is up. Try the creature pattern again.", () => this.startPatternChallenge());
     const pattern = document.createElement("div");
