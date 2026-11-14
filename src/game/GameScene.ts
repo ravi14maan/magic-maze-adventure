@@ -108,6 +108,9 @@ export class GameScene extends Phaser.Scene {
     this.load.image("hero-roster-atlas", getCharacterArtUrl("normal-girl"));
     this.load.image("world-atlas", getWorldAtlasUrl());
 
+    for (const backdrop of ["underwater", "candy", "forest", "crystal"]) {
+      this.load.image("world-bg-" + backdrop, "assets/worlds/" + backdrop + ".webp");
+    }
   }
 
   create(): void {
@@ -686,16 +689,22 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawWorld(width: number, height: number): void {
-    const sky = this.session.world.sky;
     const floor = this.session.world.floor;
     const accent = this.session.world.accent;
     const underwater = this.session.worldIndex === 0;
 
     if (underwater) {
       // Deep-to-surface ocean gradient: bright shafts above, rich blue water below.
-      const water = this.add.graphics();
-      water.fillGradientStyle(0x39d9f2, 0x19a6d5, 0x075a9c, 0x032d61, 1);
-      water.fillRect(0, 0, WORLD_LENGTH, height);
+      const hdOcean = this.textures.exists("world-bg-underwater");
+      if (hdOcean) {
+        const ocean = this.add.tileSprite(0, 0, WORLD_LENGTH, height, "world-bg-underwater")
+          .setOrigin(0, 0).setDepth(-7).setScrollFactor(0.14);
+        ocean.setTileScale(height / 768, height / 768);
+      } else {
+        const water = this.add.graphics().setDepth(-7);
+        water.fillGradientStyle(0x39d9f2, 0x19a6d5, 0x075a9c, 0x032d61, 1);
+        water.fillRect(0, 0, WORLD_LENGTH, height);
+      }
 
       // Sun rays break up the large open water area and move gently with the current.
       for (let i = 0; i < 9; i++) {
@@ -786,10 +795,13 @@ export class GameScene extends Phaser.Scene {
         this.tweens.add({ targets: bubble, y: y - 40 - (i % 4) * 8, alpha: 0.03, duration: 2800 + (i % 5) * 420, yoyo: true, repeat: -1 });
       }
     } else {
-      const background = this.add.tileSprite(
-        0, 0, WORLD_LENGTH, height, "world-atlas", this.session.world.backdrop
-      ).setOrigin(0, 0).setDepth(-6).setScrollFactor(0.16);
-      background.setTileScale(height / 540, height / 540);
+      const hdBackdropKey = "world-bg-" + this.session.world.backdrop;
+      const hasHdBackdrop = this.textures.exists(hdBackdropKey);
+      const background = hasHdBackdrop
+        ? this.add.tileSprite(0, 0, WORLD_LENGTH, height, hdBackdropKey)
+        : this.add.tileSprite(0, 0, WORLD_LENGTH, height, "world-atlas", this.session.world.backdrop);
+      background.setOrigin(0, 0).setDepth(-6).setScrollFactor(0.16);
+      background.setTileScale(hasHdBackdrop ? height / 768 : height / 540, hasHdBackdrop ? height / 768 : height / 540);
       for (let i = 0; i < 16; i++) {
         const x = 65 + i * 205;
         this.add.ellipse(x, this.groundY - 54 - (i % 3) * 15, 340, 150, accent, 0.20);
