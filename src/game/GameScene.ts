@@ -99,6 +99,8 @@ export class GameScene extends Phaser.Scene {
   private swipePointerId = -1;
   private lastMessage = "";
   private ambientMotes: Phaser.GameObjects.Arc[] = [];
+  private heroMagicMotes: Phaser.GameObjects.Arc[] = [];
+  private idleElapsed = 0;
 
   constructor(session: MazeSession, onProgress: (p: MazeProgress) => void, onComplete: (r: MazeReward) => void) {
     super("MazeScene");
@@ -155,6 +157,8 @@ export class GameScene extends Phaser.Scene {
       this.clearChallengeTimer();
       this.ambientMotes.forEach((mote) => { this.tweens.killTweensOf(mote); mote.destroy(); });
       this.ambientMotes = [];
+      this.heroMagicMotes.forEach((mote) => { this.tweens.killTweensOf(mote); mote.destroy(); });
+      this.heroMagicMotes = [];
       this.overlayElement?.remove();
       this.overlayElement = undefined;
     });
@@ -235,6 +239,7 @@ export class GameScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     if (!this.player || this.complete || this.challengeOpen) return;
     const dt = Math.min(delta, 40) / 1000;
+    this.idleElapsed += dt;
     if (this.autoWalkEnabled) this.advanceAutoWalk(dt);
     if (this.challengeOpen || this.complete) return;
     const inGap = this.isOverGap(this.player.x);
@@ -358,9 +363,10 @@ export class GameScene extends Phaser.Scene {
       if (this.heroImage) {
         this.heroImage.anims.stop();
         this.heroImage.setFrame(this.heroIdleFrame);
+        const breath = Math.sin(this.idleElapsed * 2.1);
         this.heroImage.setAngle(0);
-        this.heroImage.setScale(this.heroBaseScale);
-        this.heroImage.y = 0;
+        this.heroImage.setScale(this.heroBaseScale * (1 + breath * 0.012), this.heroBaseScale * (1 - breath * 0.008));
+        this.heroImage.y = -2.2 - (breath + 1) * 1.1;
       }
       if (this.playerShadow) {
         this.playerShadow.setScale(1, 1);
@@ -1164,6 +1170,7 @@ export class GameScene extends Phaser.Scene {
       const accessoryBadge = this.add.text(48, -171, wardrobe.accessory, { fontFamily: "system-ui", fontSize: "17px" }).setOrigin(0.5);
       const children: Phaser.GameObjects.GameObject[] = [shadow, heroImage, hairBadge, outfitBadge, accessoryBadge];
       this.player = this.add.container(120, this.groundY, children).setDepth(20);
+      this.addHeroMagicPresentation();
       return;
     }
 
@@ -1367,6 +1374,68 @@ export class GameScene extends Phaser.Scene {
     }).setOrigin(0.5);
     const playerChildren = [shadow, backHair, leftLeg, rightLeg, leftArm, rightArm, clothes, head, frontHair, faceDetails, characterDetails, hairPin, accessory];
     this.player = this.add.container(120, this.groundY, playerChildren).setDepth(20);
+    this.addHeroMagicPresentation();
+  }
+
+  /** Gives every hero a subtle, character-coloured magical identity without replacing approved artwork. */
+  private addHeroMagicPresentation(): void {
+    const auraColours: Record<CharacterId, number> = {
+      "normal-girl": 0xff8fbd,
+      "normal-boy": 0x75c5ff,
+      unicorn: 0xe6a5ff,
+      witch: 0xb18aff,
+      princess: 0xffd477,
+      prince: 0x8dbdff,
+      "male-explorer": 0x8ce0b1,
+      knight: 0xc6e3f5,
+      mermaid: 0x69e9df,
+      fairy: 0xf7a9ed,
+      "dragon-rider": 0xffb477,
+      "star-explorer": 0x8ebcff,
+      "crystal-knight": 0x9feaff,
+      "ice-mage": 0xb8f2ff
+    };
+    const colour = auraColours[this.session.characterId] ?? 0xffe6a4;
+    const aura = this.add.ellipse(0, -82, 104, 150, colour, 0.075)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    aura.setStrokeStyle(2, colour, 0.28);
+    this.player.addAt(aura, 0);
+    this.tweens.add({
+      targets: aura,
+      alpha: { from: 0.045, to: 0.13 },
+      scaleX: { from: 0.94, to: 1.06 },
+      scaleY: { from: 0.97, to: 1.035 },
+      duration: 2100,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut"
+    });
+
+    // Small orbiting motes make the selected hero feel magical in the character
+    // roster and during play. They are intentionally few for mobile GPU budgets.
+    for (let i = 0; i < 3; i++) {
+      const angle = (Math.PI * 2 * i) / 3;
+      const mote = this.add.circle(
+        Math.cos(angle) * 49,
+        -84 + Math.sin(angle) * 67,
+        i === 0 ? 3.2 : 2.2,
+        colour,
+        0.78
+      ).setBlendMode(Phaser.BlendModes.ADD);
+      this.player.add(mote);
+      this.heroMagicMotes.push(mote);
+      this.tweens.add({
+        targets: mote,
+        x: Math.cos(angle + 1.35) * 54,
+        y: -84 + Math.sin(angle + 1.35) * 70,
+        alpha: { from: 0.35, to: 0.9 },
+        duration: 2600 + i * 350,
+        delay: i * 180,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut"
+      });
+    }
   }
 
   private advanceAutoWalk(dt: number): void {
