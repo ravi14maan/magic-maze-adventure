@@ -14,6 +14,19 @@ on:
       - 'index.html'
       - 'tools/**'
       - 'README_3D_HERO_MODELS.md'
+  pull_request:
+    branches: [feature/ambient-world-polish]
+    paths:
+      - '.github/workflows/build-android-apk.yml'
+      - 'src/**'
+      - 'public/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.*'
+      - 'capacitor.config.*'
+      - 'index.html'
+      - 'tools/**'
+      - 'README_3D_HERO_MODELS.md'
   workflow_dispatch:
 
 permissions:
