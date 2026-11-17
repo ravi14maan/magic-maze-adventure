@@ -98,6 +98,7 @@ export class GameScene extends Phaser.Scene {
   private swipeStartY = 0;
   private swipePointerId = -1;
   private lastMessage = "";
+  private ambientMotes: Phaser.GameObjects.Arc[] = [];
 
   constructor(session: MazeSession, onProgress: (p: MazeProgress) => void, onComplete: (r: MazeReward) => void) {
     super("MazeScene");
@@ -126,6 +127,7 @@ export class GameScene extends Phaser.Scene {
     this.buildWorldAtlasFrames();
     this.cameras.main.setBackgroundColor(this.session.world.sky);
     this.drawWorld(width, height);
+    this.createAmbientMagic(width, height);
     this.drawHero();
     this.cameras.main.setBounds(0, 0, WORLD_LENGTH, height);
     // A little camera lag lets players see the hero advance across the screen.
@@ -151,6 +153,8 @@ export class GameScene extends Phaser.Scene {
       this.input.off("pointerdown");
       this.input.off("pointerup");
       this.clearChallengeTimer();
+      this.ambientMotes.forEach((mote) => { this.tweens.killTweensOf(mote); mote.destroy(); });
+      this.ambientMotes = [];
       this.overlayElement?.remove();
       this.overlayElement = undefined;
     });
@@ -402,6 +406,48 @@ export class GameScene extends Phaser.Scene {
         scale: 0.25,
         duration: 360 + i * 24,
         onComplete: () => particle.destroy()
+      });
+    }
+  }
+
+  /** Adds a restrained, world-themed layer of moving light to make each run feel alive. */
+  private createAmbientMagic(width: number, height: number): void {
+    const palettes: Record<string, number[]> = {
+      underwater: [0x8df5ff, 0x55d9ff, 0xd7ffff],
+      candy: [0xffa5d5, 0xffe58b, 0xffffff],
+      forest: [0xbaff8d, 0xffe58b, 0x9fffe0],
+      crystal: [0x9df6ff, 0xc9a2ff, 0xffffff],
+      ice: [0xc9f5ff, 0xffffff, 0x8adfff],
+      space: [0xffffff, 0x9eeaff, 0xffd7a1],
+      castle: [0xffed9c, 0xffc4df, 0xffffff],
+      ghost: [0xcbd4ff, 0xffffff, 0x9de9ff],
+      fairy: [0xffd0f0, 0xffed9c, 0xb8ffe9],
+      dragon: [0xffd18b, 0x9fffe0, 0xffffff],
+      sky: [0xffffff, 0xffe7a1, 0xa8eaff],
+      volcano: [0xffc078, 0xffe09a, 0xff9d72],
+      desert: [0xffe3a1, 0xffffff, 0xffc87b],
+      "rainbow-city": [0xffd3f2, 0xffed9a, 0xc5f5ff]
+    };
+    const colours = palettes[this.session.world.backdrop] ?? [0xffffff, 0xffe6a4, 0xc7f5ff];
+    const count = Math.max(18, Math.min(34, Math.round(width / 22)));
+    for (let i = 0; i < count; i++) {
+      const x = 45 + ((i * 173) % (WORLD_LENGTH - 90));
+      const y = 48 + ((i * 97) % Math.max(120, Math.floor(height * 0.68)));
+      const radius = i % 5 === 0 ? 4 : 2 + (i % 2);
+      const mote = this.add.circle(x, y, radius, colours[i % colours.length]!, 0.18 + (i % 4) * 0.07)
+        .setDepth(-1)
+        .setBlendMode(Phaser.BlendModes.ADD);
+      this.ambientMotes.push(mote);
+      this.tweens.add({
+        targets: mote,
+        y: y - 18 - (i % 4) * 7,
+        alpha: { from: 0.12, to: 0.72 },
+        scale: { from: 0.7, to: 1.35 },
+        duration: 2200 + (i % 7) * 430,
+        delay: (i % 9) * 170,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut"
       });
     }
   }
