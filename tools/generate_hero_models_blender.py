@@ -309,9 +309,9 @@ def build_one(hero):
     setup_camera_and_lights()
     scene = bpy.context.scene
     scene.render.engine = "BLENDER_EEVEE"
-    scene.eevee.taa_render_samples = 96
-    scene.render.resolution_x = 640
-    scene.render.resolution_y = 768
+    scene.eevee.taa_render_samples = 32
+    scene.render.resolution_x = 512
+    scene.render.resolution_y = 640
     scene.render.resolution_percentage = 100
     scene.render.image_settings.file_format = "PNG"
     scene.render.image_settings.color_mode = "RGBA"
