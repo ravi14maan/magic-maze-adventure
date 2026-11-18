@@ -308,7 +308,7 @@ def build_one(hero):
     display = make_hero(hero)
     setup_camera_and_lights()
     scene = bpy.context.scene
-    scene.render.engine = "BLENDER_EEVEE_NEXT"
+    scene.render.engine = "BLENDER_EEVEE"
     scene.eevee.taa_render_samples = 96
     scene.render.resolution_x = 640
     scene.render.resolution_y = 768
