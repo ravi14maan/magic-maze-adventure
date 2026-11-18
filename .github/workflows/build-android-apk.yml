@@ -53,7 +53,7 @@ jobs:
       - name: Install Blender
         run: |
           sudo apt-get update
-          sudo apt-get install -y blender
+          sudo apt-get install -y blender libegl1 libgl1
 
       - name: Install JavaScript dependencies
         run: npm install --no-audit --no-fund
