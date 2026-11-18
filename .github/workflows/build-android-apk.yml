@@ -58,8 +58,33 @@ jobs:
       - name: Install JavaScript dependencies
         run: npm install --no-audit --no-fund
 
+      - name: Install Blender Python dependencies
+        shell: bash
+        run: |
+          BLENDER_PYTHON="$(blender --background --python-expr "import bpy; print(bpy.app.binary_path_python)" 2>/dev/null | grep '^/')"
+          echo "Using Blender Python: $BLENDER_PYTHON"
+          "$BLENDER_PYTHON" -m ensurepip --upgrade
+          "$BLENDER_PYTHON" -m pip install --upgrade pip numpy
+
       - name: Generate detailed 3D hero models and renders
-        run: blender --background --python tools/generate_hero_models_blender.py
+        run: blender --background --python-exit-code 1 --python tools/generate_hero_models_blender.py
+
+      - name: Validate all hero models and renders
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("public/assets/characters3d")
+          manifest = json.loads((root / "manifest.json").read_text())
+          models = manifest.get("models", [])
+          assert len(models) == 12, f"Expected 12 heroes, got {len(models)}"
+          for item in models:
+              glb = root / item["model"]
+              png = root / item["preview"]
+              assert glb.is_file() and glb.stat().st_size > 10_000, f"Missing/invalid GLB: {glb}"
+              assert png.is_file() and png.stat().st_size > 10_000, f"Missing/invalid PNG: {png}"
+          print("Validated 12 GLB models and 12 rendered portraits.")
+          PY
 
       - name: Build web application
         run: npm run build
