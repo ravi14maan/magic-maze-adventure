@@ -271,7 +271,11 @@ def make_hero(hero):
 
     # Studio render-only soft shadow disc
     shadow_mat = mat("Soft shadow", "#A7A0BA", rough=1)
-    shadow_mat.diffuse_color = (.45,.42,.55,.20)
+    shadow_mat.diffuse_color = (.45,.42,.55,.18)
+    shadow_bs = shadow_mat.node_tree.nodes.get("Principled BSDF")
+    shadow_bs.inputs["Alpha"].default_value = .18
+    if hasattr(shadow_mat, "surface_render_method"):
+        shadow_mat.surface_render_method = "DITHERED"
     uv("Ground shadow", (0,.03,.018), (.58,.32,.018), shadow_mat)
     return display
 
@@ -327,7 +331,7 @@ def build_one(hero):
     bpy.ops.object.convert(target="MESH")
     bpy.ops.object.select_all(action="DESELECT")
     for obj in bpy.context.scene.objects:
-        if obj.type == "MESH" and obj.name not in {"Portrait camera"}:
+        if obj.type == "MESH" and obj.name != "Ground shadow":
             obj.select_set(True)
     bpy.context.view_layer.objects.active = next((o for o in bpy.context.selected_objects if o.type=="MESH"), None)
     # GLB exporter uses the selected character mesh collection.
