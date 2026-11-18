@@ -198,11 +198,9 @@ export function canonicalCharacterArtId(id: CharacterId): CharacterId {
 
 export function getCharacterArtUrl(id: CharacterId): string {
   const canonical = canonicalCharacterArtId(id);
-  const filename = EXISTING_ART[canonical];
-  if (filename) return "assets/characters/" + filename;
-  const inline = characterSvg[canonical];
-  if (inline) return makeSvgUrl(inline);
-  return "assets/characters/normal-boy.webp";
+  // Premium portraits are rendered directly from the matching Blender GLB.
+  // These same GLBs are shipped alongside the PNGs for future in-game 3D use.
+  return "assets/characters3d/previews/" + canonical + ".png";
 }
 
 export function getCharacterArtBackgroundStyle(id: CharacterId): string {
