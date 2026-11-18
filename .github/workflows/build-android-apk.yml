@@ -53,20 +53,14 @@ jobs:
       - name: Install Blender
         run: |
           sudo apt-get update
-          sudo apt-get install -y blender libegl1 libgl1
+          sudo apt-get install -y blender libegl1 libgl1 python3-numpy
 
       - name: Install JavaScript dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Install Blender Python dependencies
-        shell: bash
-        run: |
-          BLENDER_PYTHON="$(blender --background --python-expr "import bpy; print(bpy.app.binary_path_python)" 2>/dev/null | grep '^/')"
-          echo "Using Blender Python: $BLENDER_PYTHON"
-          "$BLENDER_PYTHON" -m ensurepip --upgrade
-          "$BLENDER_PYTHON" -m pip install --upgrade pip numpy
-
       - name: Generate detailed 3D hero models and renders
+        env:
+          PYTHONPATH: /usr/lib/python3/dist-packages
         run: blender --background --python-exit-code 1 --python tools/generate_hero_models_blender.py
 
       - name: Validate all hero models and renders
