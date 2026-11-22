@@ -742,6 +742,92 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * Builds a readable, dimensional stone path instead of a flat colour strip.
+   * The same masonry treatment is palette-tinted for every world.
+   */
+  private drawDetailedPlatform(start: number, end: number, baseColour: number, topColour: number, underwater: boolean): void {
+    const g = this.add.graphics().setDepth(3);
+    const worldIndex = this.session.worldIndex;
+    const width = end - start;
+    const tint = (colour: number, amount: number): number => {
+      const r = Phaser.Math.Clamp(((colour >> 16) & 255) + amount, 0, 255);
+      const green = Phaser.Math.Clamp(((colour >> 8) & 255) + amount, 0, 255);
+      const b = Phaser.Math.Clamp((colour & 255) + amount, 0, 255);
+      return (r << 16) | (green << 8) | b;
+    };
+
+    // Front-facing masonry: staggered blocks, dark mortar and individual bevels.
+    const blockPalette = [tint(baseColour, 26), tint(baseColour, 12), baseColour, tint(baseColour, -13)];
+    for (let row = 0; row < 3; row++) {
+      const y = this.groundY + 20 + row * 48;
+      const blockWidth = row === 1 ? 82 : 94;
+      const offset = row === 1 ? 42 : 0;
+      for (let x = start - blockWidth + offset; x < end; x += blockWidth + 5) {
+        const w = Math.min(blockWidth, end - x);
+        if (w < 12) continue;
+        const seed = Math.abs(Math.floor(x / 13) + row * 7 + worldIndex * 11);
+        const colour = blockPalette[seed % blockPalette.length]!;
+        const inset = 2 + (seed % 4);
+        g.fillStyle(0x10283b, 0.34);
+        g.fillRoundedRect(x + inset, y + 5, w - 3, 42, 8);
+        g.fillStyle(colour, 1);
+        g.fillRoundedRect(x + inset, y, w - 5, 39, 8);
+        g.fillStyle(tint(colour, 34), 0.78);
+        g.fillRoundedRect(x + inset + 5, y + 3, Math.max(8, w - 18), 5, 3);
+        g.lineStyle(2, tint(colour, -34), 0.58);
+        g.strokeRoundedRect(x + inset, y, w - 5, 39, 8);
+        if (seed % 3 === 0) {
+          g.lineStyle(2, tint(colour, -48), 0.55);
+          g.lineBetween(x + w * 0.56, y + 13, x + w * 0.49, y + 21);
+          g.lineBetween(x + w * 0.49, y + 21, x + w * 0.58, y + 29);
+        }
+      }
+    }
+
+    // Top stones are broad enough to read clearly beneath the running character.
+    for (let x = start - 4, i = 0; x < end; x += 72, i++) {
+      const w = Math.min(76, end - x + 4);
+      const seed = i + worldIndex * 5;
+      const stone = blockPalette[seed % blockPalette.length]!;
+      g.fillStyle(0x10283b, 0.32);
+      g.fillRoundedRect(x + 2, this.groundY - 2, w - 3, 27, 9);
+      g.fillStyle(tint(stone, 24), 1);
+      g.fillRoundedRect(x, this.groundY - 10, w - 4, 25, 8);
+      g.fillStyle(tint(stone, 48), 0.9);
+      g.fillRoundedRect(x + 7, this.groundY - 8, Math.max(8, w - 20), 4, 2);
+      g.lineStyle(2, tint(stone, -40), 0.6);
+      g.strokeRoundedRect(x, this.groundY - 10, w - 4, 25, 8);
+    }
+
+    // The top lip and tiny highlights keep the route silhouette crisp on mobile.
+    g.fillStyle(topColour, 0.94);
+    g.fillRoundedRect(start, this.groundY - 13, width, 7, 3);
+    g.lineStyle(2, underwater ? 0xc9ffff : 0xffffff, 0.82);
+    g.lineBetween(start + 5, this.groundY - 14, end - 5, this.groundY - 14);
+
+    // Small world-specific details make the same platform feel native to each biome.
+    if (underwater || worldIndex === 1 || worldIndex === 2 || worldIndex === 8) {
+      const colours = underwater ? [0xff6baf, 0xffa34e, 0x9a79ee] :
+        worldIndex === 1 ? [0xff83bd, 0xffe58c, 0x72e4d0] :
+        worldIndex === 2 ? [0x4bc47a, 0x8be58b, 0xffc1df] : [0xff8dc8, 0xffd76f, 0xb58cff];
+      for (let x = start + 28, i = 0; x < end - 20; x += 185, i++) {
+        const colour = colours[i % colours.length]!;
+        if (underwater) {
+          g.lineStyle(5, colour, 0.92);
+          g.beginPath(); g.moveTo(x, this.groundY + 10); g.lineTo(x - 5, this.groundY - 1); g.lineTo(x + 5, this.groundY - 8); g.strokePath();
+          g.fillStyle(colour, 0.95); g.fillCircle(x + 5, this.groundY - 8, 3);
+        } else if (worldIndex === 1) {
+          g.fillStyle(colour, 0.92); g.fillCircle(x, this.groundY + 14, 8 + (i % 2) * 3);
+          g.lineStyle(2, 0xffffff, 0.8); g.strokeCircle(x - 2, this.groundY + 12, 5);
+        } else {
+          g.fillStyle(colour, 0.9); g.fillEllipse(x, this.groundY + 13, 15, 7);
+          g.lineStyle(2, tint(colour, 28), 0.8); g.lineBetween(x, this.groundY + 10, x - 3, this.groundY + 5);
+        }
+      }
+    }
+  }
+
   private drawWorld(width: number, height: number): void {
     const floor = this.session.world.floor;
     const accent = this.session.world.accent;
@@ -887,17 +973,8 @@ export class GameScene extends Phaser.Scene {
     for (const [start, end] of groundSegments) {
       const platformColour = underwater ? 0x28616d : floor;
       const topColour = underwater ? 0x36c8d0 : accent;
-      this.add.rectangle((start + end) / 2, this.groundY + 95, end - start, 190, platformColour);
-      this.add.rectangle((start + end) / 2, this.groundY + 5, end - start, 18, topColour);
-      this.add.rectangle((start + end) / 2, this.groundY - 4, end - start, 4, underwater ? 0xc1fff5 : 0xffffff, 0.72);
-      if (underwater) {
-        const stones = this.add.graphics();
-        stones.lineStyle(2, 0x93e0d7, 0.32);
-        for (let x = start + 12; x < end - 18; x += 62) {
-          stones.strokeRoundedRect(x, this.groundY + 34 + ((x / 62) % 2) * 20, 52, 28, 5);
-          stones.lineBetween(x + 10, this.groundY + 73, x + 44, this.groundY + 73);
-        }
-      }
+      this.add.rectangle((start + end) / 2, this.groundY + 95, end - start, 190, platformColour).setDepth(1);
+      this.drawDetailedPlatform(start, end, platformColour, topColour, underwater);
     }
 
     for (const gap of this.gapZones) {
