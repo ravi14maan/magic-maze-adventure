@@ -1,0 +1,112 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [feature/3d-hero-models]
+    paths:
+      - '.github/workflows/build-android-apk.yml'
+      - 'src/**'
+      - 'public/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.*'
+      - 'capacitor.config.*'
+      - 'index.html'
+      - 'tools/**'
+      - 'README_3D_HERO_MODELS.md'
+  pull_request:
+    branches: [feature/ambient-world-polish]
+    paths:
+      - '.github/workflows/build-android-apk.yml'
+      - 'src/**'
+      - 'public/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.*'
+      - 'capacitor.config.*'
+      - 'index.html'
+      - 'tools/**'
+      - 'README_3D_HERO_MODELS.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-debug-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install Blender
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y blender libegl1 libgl1 python3-numpy
+
+      - name: Install JavaScript dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Generate detailed 3D hero models and renders
+        env:
+          PYTHONPATH: /usr/lib/python3/dist-packages
+        run: blender --background --python-exit-code 1 --python tools/generate_hero_models_blender.py
+
+      - name: Validate all hero models and renders
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("public/assets/characters3d")
+          manifest = json.loads((root / "manifest.json").read_text())
+          models = manifest.get("models", [])
+          assert len(models) == 12, f"Expected 12 heroes, got {len(models)}"
+          for item in models:
+              glb = root / item["model"]
+              png = root / item["preview"]
+              assert glb.is_file() and glb.stat().st_size > 10_000, f"Missing/invalid GLB: {glb}"
+              assert png.is_file() and png.stat().st_size > 10_000, f"Missing/invalid PNG: {png}"
+          print("Validated 12 GLB models and 12 rendered portraits.")
+          PY
+
+      - name: Build web application
+        run: npm run build
+
+      - name: Add Android platform
+        run: npx cap add android
+
+      - name: Sync Capacitor assets
+        run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: magic-maze-adventure-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload 3D hero model review pack
+        uses: actions/upload-artifact@v4
+        with:
+          name: magic-maze-3d-hero-models
+          path: public/assets/characters3d/
+          if-no-files-found: error
+          retention-days: 30

@@ -98,6 +98,9 @@ export class GameScene extends Phaser.Scene {
   private swipeStartY = 0;
   private swipePointerId = -1;
   private lastMessage = "";
+  private ambientMotes: Phaser.GameObjects.Arc[] = [];
+  private heroMagicMotes: Phaser.GameObjects.Arc[] = [];
+  private idleElapsed = 0;
 
   constructor(session: MazeSession, onProgress: (p: MazeProgress) => void, onComplete: (r: MazeReward) => void) {
     super("MazeScene");
@@ -126,6 +129,7 @@ export class GameScene extends Phaser.Scene {
     this.buildWorldAtlasFrames();
     this.cameras.main.setBackgroundColor(this.session.world.sky);
     this.drawWorld(width, height);
+    this.createAmbientMagic(width, height);
     this.drawHero();
     this.cameras.main.setBounds(0, 0, WORLD_LENGTH, height);
     // A little camera lag lets players see the hero advance across the screen.
@@ -151,6 +155,10 @@ export class GameScene extends Phaser.Scene {
       this.input.off("pointerdown");
       this.input.off("pointerup");
       this.clearChallengeTimer();
+      this.ambientMotes.forEach((mote) => { this.tweens.killTweensOf(mote); mote.destroy(); });
+      this.ambientMotes = [];
+      this.heroMagicMotes.forEach((mote) => { this.tweens.killTweensOf(mote); mote.destroy(); });
+      this.heroMagicMotes = [];
       this.overlayElement?.remove();
       this.overlayElement = undefined;
     });
@@ -231,6 +239,7 @@ export class GameScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     if (!this.player || this.complete || this.challengeOpen) return;
     const dt = Math.min(delta, 40) / 1000;
+    this.idleElapsed += dt;
     if (this.autoWalkEnabled) this.advanceAutoWalk(dt);
     if (this.challengeOpen || this.complete) return;
     const inGap = this.isOverGap(this.player.x);
@@ -354,9 +363,10 @@ export class GameScene extends Phaser.Scene {
       if (this.heroImage) {
         this.heroImage.anims.stop();
         this.heroImage.setFrame(this.heroIdleFrame);
+        const breath = Math.sin(this.idleElapsed * 2.1);
         this.heroImage.setAngle(0);
-        this.heroImage.setScale(this.heroBaseScale);
-        this.heroImage.y = 0;
+        this.heroImage.setScale(this.heroBaseScale * (1 + breath * 0.012), this.heroBaseScale * (1 - breath * 0.008));
+        this.heroImage.y = -2.2 - (breath + 1) * 1.1;
       }
       if (this.playerShadow) {
         this.playerShadow.setScale(1, 1);
@@ -402,6 +412,48 @@ export class GameScene extends Phaser.Scene {
         scale: 0.25,
         duration: 360 + i * 24,
         onComplete: () => particle.destroy()
+      });
+    }
+  }
+
+  /** Adds a restrained, world-themed layer of moving light to make each run feel alive. */
+  private createAmbientMagic(width: number, height: number): void {
+    const palettes: Record<string, number[]> = {
+      underwater: [0x8df5ff, 0x55d9ff, 0xd7ffff],
+      candy: [0xffa5d5, 0xffe58b, 0xffffff],
+      forest: [0xbaff8d, 0xffe58b, 0x9fffe0],
+      crystal: [0x9df6ff, 0xc9a2ff, 0xffffff],
+      ice: [0xc9f5ff, 0xffffff, 0x8adfff],
+      space: [0xffffff, 0x9eeaff, 0xffd7a1],
+      castle: [0xffed9c, 0xffc4df, 0xffffff],
+      ghost: [0xcbd4ff, 0xffffff, 0x9de9ff],
+      fairy: [0xffd0f0, 0xffed9c, 0xb8ffe9],
+      dragon: [0xffd18b, 0x9fffe0, 0xffffff],
+      sky: [0xffffff, 0xffe7a1, 0xa8eaff],
+      volcano: [0xffc078, 0xffe09a, 0xff9d72],
+      desert: [0xffe3a1, 0xffffff, 0xffc87b],
+      "rainbow-city": [0xffd3f2, 0xffed9a, 0xc5f5ff]
+    };
+    const colours = palettes[this.session.world.backdrop] ?? [0xffffff, 0xffe6a4, 0xc7f5ff];
+    const count = Math.max(18, Math.min(34, Math.round(width / 22)));
+    for (let i = 0; i < count; i++) {
+      const x = 45 + ((i * 173) % (WORLD_LENGTH - 90));
+      const y = 48 + ((i * 97) % Math.max(120, Math.floor(height * 0.68)));
+      const radius = i % 5 === 0 ? 4 : 2 + (i % 2);
+      const mote = this.add.circle(x, y, radius, colours[i % colours.length]!, 0.18 + (i % 4) * 0.07)
+        .setDepth(-1)
+        .setBlendMode(Phaser.BlendModes.ADD);
+      this.ambientMotes.push(mote);
+      this.tweens.add({
+        targets: mote,
+        y: y - 18 - (i % 4) * 7,
+        alpha: { from: 0.12, to: 0.72 },
+        scale: { from: 0.7, to: 1.35 },
+        duration: 2200 + (i % 7) * 430,
+        delay: (i % 9) * 170,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut"
       });
     }
   }
@@ -1118,6 +1170,7 @@ export class GameScene extends Phaser.Scene {
       const accessoryBadge = this.add.text(48, -171, wardrobe.accessory, { fontFamily: "system-ui", fontSize: "17px" }).setOrigin(0.5);
       const children: Phaser.GameObjects.GameObject[] = [shadow, heroImage, hairBadge, outfitBadge, accessoryBadge];
       this.player = this.add.container(120, this.groundY, children).setDepth(20);
+      this.addHeroMagicPresentation();
       return;
     }
 
@@ -1321,6 +1374,68 @@ export class GameScene extends Phaser.Scene {
     }).setOrigin(0.5);
     const playerChildren = [shadow, backHair, leftLeg, rightLeg, leftArm, rightArm, clothes, head, frontHair, faceDetails, characterDetails, hairPin, accessory];
     this.player = this.add.container(120, this.groundY, playerChildren).setDepth(20);
+    this.addHeroMagicPresentation();
+  }
+
+  /** Gives every hero a subtle, character-coloured magical identity without replacing approved artwork. */
+  private addHeroMagicPresentation(): void {
+    const auraColours: Record<CharacterId, number> = {
+      "normal-girl": 0xff8fbd,
+      "normal-boy": 0x75c5ff,
+      unicorn: 0xe6a5ff,
+      witch: 0xb18aff,
+      princess: 0xffd477,
+      prince: 0x8dbdff,
+      "male-explorer": 0x8ce0b1,
+      knight: 0xc6e3f5,
+      mermaid: 0x69e9df,
+      fairy: 0xf7a9ed,
+      "dragon-rider": 0xffb477,
+      "star-explorer": 0x8ebcff,
+      "crystal-knight": 0x9feaff,
+      "ice-mage": 0xb8f2ff
+    };
+    const colour = auraColours[this.session.characterId] ?? 0xffe6a4;
+    const aura = this.add.ellipse(0, -82, 104, 150, colour, 0.075)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    aura.setStrokeStyle(2, colour, 0.28);
+    this.player.addAt(aura, 0);
+    this.tweens.add({
+      targets: aura,
+      alpha: { from: 0.045, to: 0.13 },
+      scaleX: { from: 0.94, to: 1.06 },
+      scaleY: { from: 0.97, to: 1.035 },
+      duration: 2100,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut"
+    });
+
+    // Small orbiting motes make the selected hero feel magical in the character
+    // roster and during play. They are intentionally few for mobile GPU budgets.
+    for (let i = 0; i < 3; i++) {
+      const angle = (Math.PI * 2 * i) / 3;
+      const mote = this.add.circle(
+        Math.cos(angle) * 49,
+        -84 + Math.sin(angle) * 67,
+        i === 0 ? 3.2 : 2.2,
+        colour,
+        0.78
+      ).setBlendMode(Phaser.BlendModes.ADD);
+      this.player.add(mote);
+      this.heroMagicMotes.push(mote);
+      this.tweens.add({
+        targets: mote,
+        x: Math.cos(angle + 1.35) * 54,
+        y: -84 + Math.sin(angle + 1.35) * 70,
+        alpha: { from: 0.35, to: 0.9 },
+        duration: 2600 + i * 350,
+        delay: i * 180,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut"
+      });
+    }
   }
 
   private advanceAutoWalk(dt: number): void {
