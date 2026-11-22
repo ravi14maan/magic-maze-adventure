@@ -11,9 +11,8 @@ export function canonicalCharacterArtId(id: CharacterId): CharacterId {
 
 export function getCharacterArtUrl(id: CharacterId): string {
   const canonical = canonicalCharacterArtId(id);
-  // Premium portraits are rendered directly from the matching Blender GLB.
-  // These same GLBs are shipped alongside the PNGs for future in-game 3D use.
-  return "assets/characters3d/previews/" + canonical + ".png";
+  // Use the exact approved character artwork supplied for the game.
+  return "assets/characters3d/previews/" + canonical + ".webp";
 }
 
 export function getCharacterArtBackgroundStyle(id: CharacterId): string {
