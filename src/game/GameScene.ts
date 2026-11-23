@@ -336,7 +336,7 @@ export class GameScene extends Phaser.Scene {
 
     if (!inGap && this.player.y >= this.groundY - 2) this.lastGroundedAt = this.time.now;
     if (this.autoWalkEnabled && !this.jumping && !inGap && this.time.now > this.duckUntil) {
-      this.walkCycle += dt * 10;
+      this.walkCycle += dt * 12;
       this.leftLeg.angle = Math.sin(this.walkCycle) * 22;
       this.rightLeg.angle = Math.sin(this.walkCycle + Math.PI) * 22;
       this.leftArm.angle = Math.sin(this.walkCycle + Math.PI) * 17;
@@ -833,132 +833,12 @@ export class GameScene extends Phaser.Scene {
     const accent = this.session.world.accent;
     const underwater = this.session.worldIndex === 0;
 
-    if (underwater) {
-      // Deep-to-surface ocean gradient: bright shafts above, rich blue water below.
-      const hdOcean = this.textures.exists("world-bg-underwater");
-      if (hdOcean) {
-        const ocean = this.add.tileSprite(0, 0, WORLD_LENGTH, height, "world-bg-underwater")
-          .setOrigin(0, 0).setDepth(-7).setScrollFactor(0.14);
-        ocean.setTileScale(height / 320, height / 320);
-      } else {
-        const water = this.add.graphics().setDepth(-7);
-        water.fillGradientStyle(0x39d9f2, 0x19a6d5, 0x075a9c, 0x032d61, 1);
-        water.fillRect(0, 0, WORLD_LENGTH, height);
-      }
-
-      // Sun rays break up the large open water area and move gently with the current.
-      for (let i = 0; i < 9; i++) {
-        const x = 100 + i * 365;
-        const ray = this.add.graphics();
-        ray.fillStyle(0xb9f6ff, 0.10 + (i % 3) * 0.025);
-        ray.fillTriangle(x, 0, x + 105, 0, x + 315, this.groundY + 12);
-        this.tweens.add({ targets: ray, alpha: 0.52, duration: 2400 + (i % 3) * 450, yoyo: true, repeat: -1 });
-      }
-
-      // Blue silhouettes of reef ridges and a distant seabed give the route depth.
-      const reef = this.add.graphics();
-      reef.fillStyle(0x064e7d, 0.64);
-      for (let i = 0; i < 12; i++) {
-        reef.fillEllipse(70 + i * 285, this.groundY - 46 - (i % 3) * 28, 410, 180 + (i % 2) * 45);
-      }
-      reef.fillStyle(0x0b7192, 0.46);
-      for (let i = 0; i < 14; i++) {
-        reef.fillEllipse(120 + i * 245, this.groundY + 25, 300, 100);
-      }
-
-      // Ancient submerged columns and broken arches form recognisable landmarks.
-      for (const ruinX of [250, 1040, 1810, 2670]) {
-        const ruin = this.add.graphics();
-        ruin.fillStyle(0x496f83, 0.78);
-        ruin.fillRoundedRect(ruinX, this.groundY - 255, 28, 185, 7);
-        ruin.fillRoundedRect(ruinX + 100, this.groundY - 255, 28, 185, 7);
-        ruin.fillRoundedRect(ruinX - 13, this.groundY - 265, 155, 20, 5);
-        ruin.lineStyle(12, 0x5a8996, 0.72);
-        ruin.beginPath();
-        ruin.arc(ruinX + 64, this.groundY - 249, 62, Math.PI, 0, false);
-        ruin.strokePath();
-        ruin.lineStyle(3, 0xa7d2c9, 0.36);
-        ruin.lineBetween(ruinX + 8, this.groundY - 210, ruinX + 8, this.groundY - 100);
-        ruin.lineBetween(ruinX + 108, this.groundY - 210, ruinX + 108, this.groundY - 100);
-      }
-
-      // Schools of fish are drawn as small independent shapes, not emoji clouds.
-      const fishColours = [0xff9d3b, 0x21d4d0, 0xff5e9b, 0xffd84b, 0x79e7ff];
-      for (let i = 0; i < 24; i++) {
-        const x = 80 + i * 128;
-        const y = 95 + (i % 5) * 64;
-        const scale = 0.62 + (i % 3) * 0.15;
-        const fish = this.add.graphics();
-        fish.fillStyle(fishColours[i % fishColours.length]!, 0.94);
-        fish.fillEllipse(0, 0, 34 * scale, 19 * scale);
-        fish.fillTriangle(-15 * scale, 0, -29 * scale, -12 * scale, -29 * scale, 12 * scale);
-        fish.fillStyle(0xffffff, 1);
-        fish.fillCircle(10 * scale, -3 * scale, 3 * scale);
-        fish.fillStyle(0x082d4b, 1);
-        fish.fillCircle(11 * scale, -3 * scale, 1.5 * scale);
-        fish.setPosition(x, y);
-        this.tweens.add({ targets: fish, x: x + 34 + (i % 4) * 15, y: y - 7, duration: 2600 + (i % 5) * 300, yoyo: true, repeat: -1 });
-      }
-
-      // Seaweed sways at the reef floor in rich greens, turquoise and coral pink.
-      for (let i = 0; i < 18; i++) {
-        const x = 25 + i * 178;
-        const colour = [0x13b89e, 0x43d6a1, 0x0b9a85, 0xf26b9b][i % 4]!;
-        const plant = this.add.graphics();
-        plant.lineStyle(7 + (i % 2) * 2, colour, 0.98);
-        plant.beginPath(); plant.moveTo(x, this.groundY + 9); plant.lineTo(x - 10, this.groundY - 48); plant.lineTo(x + 14, this.groundY - 103); plant.strokePath();
-        plant.beginPath(); plant.moveTo(x - 4, this.groundY - 30); plant.lineTo(x - 32, this.groundY - 66); plant.strokePath();
-        plant.beginPath(); plant.moveTo(x + 8, this.groundY - 59); plant.lineTo(x + 38, this.groundY - 91); plant.strokePath();
-        this.tweens.add({ targets: plant, angle: i % 2 ? 6 : -6, duration: 1500 + (i % 4) * 250, yoyo: true, repeat: -1 });
-      }
-
-      // Branching reef coral in saturated pink, red, orange and purple.
-      for (let i = 0; i < 16; i++) {
-        const x = 85 + i * 205;
-        const y = this.groundY - 16 - (i % 3) * 12;
-        const colour = [0xff5fa7, 0xff784e, 0x9f70ed, 0xffb33f, 0x2fe1d1][i % 5]!;
-        const coral = this.add.graphics();
-        coral.lineStyle(8, colour, 0.98);
-        coral.beginPath(); coral.moveTo(x, y); coral.lineTo(x - 7, y - 36); coral.lineTo(x - 22, y - 58); coral.strokePath();
-        coral.beginPath(); coral.moveTo(x - 7, y - 36); coral.lineTo(x + 10, y - 62); coral.lineTo(x + 12, y - 81); coral.strokePath();
-        coral.beginPath(); coral.moveTo(x + 4, y - 47); coral.lineTo(x + 30, y - 58); coral.strokePath();
-        coral.fillStyle(colour, 1);
-        coral.fillCircle(x - 22, y - 58, 5); coral.fillCircle(x + 12, y - 81, 5); coral.fillCircle(x + 30, y - 58, 5);
-      }
-
-      // Bubble trails in several sizes drift upward across the full playfield.
-      for (let i = 0; i < 48; i++) {
-        const x = 28 + (i * 173) % (WORLD_LENGTH - 45);
-        const y = 45 + (i * 79) % (this.groundY - 70);
-        const radius = 3 + (i % 5) * 2;
-        const bubble = this.add.circle(x, y, radius, 0xc9f8ff, 0.12).setStrokeStyle(1.5, 0xe7ffff, 0.58);
-        this.tweens.add({ targets: bubble, y: y - 40 - (i % 4) * 8, alpha: 0.03, duration: 2800 + (i % 5) * 420, yoyo: true, repeat: -1 });
-      }
-    } else {
-      const hdBackdropKey = "world-bg-" + this.session.world.backdrop;
-      const hasHdBackdrop = this.textures.exists(hdBackdropKey);
-      const background = hasHdBackdrop
-        ? this.add.tileSprite(0, 0, WORLD_LENGTH, height, hdBackdropKey)
-        : this.add.tileSprite(0, 0, WORLD_LENGTH, height, "world-atlas", this.session.world.backdrop);
-      background.setOrigin(0, 0).setDepth(-6).setScrollFactor(0.16);
-      const backgroundScale = hasHdBackdrop ? height / 320 : height / 540;
-      background.setTileScale(backgroundScale, backgroundScale);
-      for (let i = 0; i < 16; i++) {
-        const x = 65 + i * 205;
-        this.add.ellipse(x, this.groundY - 54 - (i % 3) * 15, 340, 150, accent, 0.20);
-        const sceneryByWorld: string[][] = [
-          ["🐠", "🪸", "🐬"], ["🍭", "🍬", "🍩"], ["🌳", "🌼", "🍄"],
-          ["🦇", "🔮", "🕸️"], ["🌲", "⛄", "❄️"], ["🪐", "⭐", "🚀"],
-          ["🏰", "🛡️", "👑"], ["👻", "🌙", "🦇"], ["🌷", "🧚", "🦋"],
-          ["💎", "🔷", "🔮"], ["🐉", "🥚", "🏞️"], ["☁️", "🏝️", "🪽"],
-          ["🌋", "🔥", "🪨"], ["🏜️", "🏺", "🐪"], ["🌈", "🏙️", "⭐"]
-        ];
-        const scenery = sceneryByWorld[this.session.worldIndex] ?? ["🌳", "🌼", "🍄"];
-        this.add.text(x, this.groundY - 115 - (i % 2) * 24, scenery[i % scenery.length]!, {
-          fontFamily: "system-ui", fontSize: "43px"
-        });
-      }
-    }
+    // Use the dedicated illustrated scene for every world. The artwork is a
+    // seamless 4x4 atlas with a separate frame for each biome.
+    const background = this.add.tileSprite(
+      0, 0, WORLD_LENGTH, height, "world-atlas", this.session.world.backdrop
+    ).setOrigin(0, 0).setDepth(-7).setScrollFactor(0.16);
+    background.setTileScale(height / 540, height / 540);
 
     this.drawAmbientParallax(width, height, underwater);
     this.drawWorldLandmarks(height);
@@ -1517,7 +1397,7 @@ export class GameScene extends Phaser.Scene {
 
   private advanceAutoWalk(dt: number): void {
     if (!this.autoWalkEnabled || !this.player || this.challengeOpen || this.complete) return;
-    const walkSpeed = 100;
+    const walkSpeed = 150;
     const nextX = Math.min(FINISH_X + 30, this.player.x + walkSpeed * dt);
 
     // Keep moving past rocks and gaps. Jumping is entirely player-controlled;
