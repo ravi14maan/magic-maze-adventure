@@ -336,7 +336,7 @@ export class GameScene extends Phaser.Scene {
 
     if (!inGap && this.player.y >= this.groundY - 2) this.lastGroundedAt = this.time.now;
     if (this.autoWalkEnabled && !this.jumping && !inGap && this.time.now > this.duckUntil) {
-      this.walkCycle += dt * 12;
+      this.walkCycle += dt * 18;
       this.leftLeg.angle = Math.sin(this.walkCycle) * 22;
       this.rightLeg.angle = Math.sin(this.walkCycle + Math.PI) * 22;
       this.leftArm.angle = Math.sin(this.walkCycle + Math.PI) * 17;
@@ -1397,7 +1397,8 @@ export class GameScene extends Phaser.Scene {
 
   private advanceAutoWalk(dt: number): void {
     if (!this.autoWalkEnabled || !this.player || this.challengeOpen || this.complete) return;
-    const walkSpeed = 150;
+    // A noticeably faster runner pace: nearly double the previous 150-unit speed.
+    const walkSpeed = 280;
     const nextX = Math.min(FINISH_X + 30, this.player.x + walkSpeed * dt);
 
     // Keep moving past rocks and gaps. Jumping is entirely player-controlled;
