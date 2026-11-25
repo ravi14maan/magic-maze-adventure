@@ -1,116 +1,55 @@
 # Magic Maze Adventure
 
-A colourful, pastel, kawaii-style 2D fantasy maze adventure designed by **Ahana Maan**.
+Magic Maze Adventure is a colourful, child-friendly fantasy **side-scrolling runner/adventure**, created with Ahana Maan's creative direction and developed with adult guidance. Players choose heroes and worlds, run across platforms, avoid hazards, collect rewards and complete challenge-station mini-games.
 
-## Project vision
+- Creator / creative director: Ahana Maan
+- Project owner / engineering: Ravinder Maan
+- Repository: https://github.com/ravi14maan/magic-maze-adventure
+- Development branch: `feature/rich-world-environments` (verify branch/PR before contributing)
+- Status: playable development alpha; Android debug APKs are testing builds, not production releases.
 
-Build a child-friendly maze adventure with ten themed worlds, five levels per world, collectible rewards, unlockable characters, custom cartoon profile avatars, and independent local player profiles.
+## Current implementation
+- Phaser 3, TypeScript, Vite; Capacitor 8 Android wrapper.
+- Side-scrolling scene, movement, scrolling camera, platforms/ground, hazards, collectibles, challenge stations and touch controls.
+- 15 worlds configured, 5 levels each; challenge/difficulty data.
+- World background atlas and landmarks; environment art needs a major polish pass.
+- Character definitions/art loading, unlock/economy, profile/wardrobe data.
+- Coins, gems, stars/rewards and challenge mini-game flow.
+- Android debug APK workflows in GitHub Actions.
 
-## Version 1.0 scope
+Configured features are not necessarily fully finished or QA-verified. See [Project Status](docs/PROJECT_STATUS.md).
 
-- 10 worlds × 5 levels = 50 levels.
-- Five challenge types: Classic, Monster, Obstacle, Key & Door, and Tricky Maze.
-- Nine playable characters.
-- Three characters available immediately: **Normal Girl, Normal Boy, Unicorn**.
-- Six characters unlockable with earned in-game coins: Witch, Princess, Prince, Male Explorer, Knight, Mermaid.
-- Multiple independent profiles on one device.
-- Custom cartoon avatars built from in-game options; no photo upload.
-- Profile-specific progress, currency, character ownership, and settings.
-- Offline-first play; no ads, real-money purchases, public chat, or unrestricted uploads in v1.
+## Worlds (current configuration)
+1 Underwater; 2 Candy Kingdom; 3 Enchanted Forest; 4 Scary Cave; 5 Frozen Kingdom; 6 Space; 7 Magic Castle; 8 Ghost World; 9 Fairy World; 10 Crystal Cave; 11 Dragon Valley; 12 Sky Islands; 13 Volcano Realm; 14 Desert Ruins; 15 Rainbow City. Five levels are configured per world. Some worlds share one of 14 backdrop art families.
 
-## Technology direction
-
-- Phaser 3 + TypeScript for the game.
-- Vite for development and web builds.
-- Capacitor for later Android and iOS packaging.
-- Vitest for unit tests and Playwright for browser end-to-end tests.
-- GitHub Actions for continuous integration.
-
-## Documentation
-
-- [Game Design Document](docs/GAME_DESIGN_DOCUMENT.md)
-- [Technical Architecture](docs/TECHNICAL_ARCHITECTURE.md)
-- [Development Roadmap](docs/DEVELOPMENT_ROADMAP.md)
-- [Character Unlock Configuration](docs/CHARACTER_UNLOCKS.md)
-- [AI Development Workflow](docs/AI_DEVELOPMENT_WORKFLOW.md)
-
-## Creative ownership
-
-**Game Creator / Creative Director:** Ahana Maan  
-**Parent / Project Owner:** Ravinder Maan
-
-Ahana leads creative decisions. Engineering, testing, privacy, and publishing activities are carried out with adult guidance.
+## Characters
+Starting: Normal Girl, Normal Boy, Unicorn. Other definitions: Witch, Princess, Mermaid, Fairy/Moonlit Fairy, Dragon Rider, Star Explorer, Crystal Knight, Prince, Ice Mage. Legacy IDs `male-explorer` and `knight` remain for compatibility. Verify current IDs/mappings in `src/data/characters.ts` and `src/data/characterArt.ts`.
 
 ## Run locally
-
-Requirements: Node.js 22.12 or newer and npm.
-
+Requirements: Node.js 22 (22.12+ recommended), npm.
 ```bash
+git clone https://github.com/ravi14maan/magic-maze-adventure.git
+cd magic-maze-adventure
 npm install
 npm run dev
 ```
+Checks: `npm run typecheck`, `npm run build`.
 
-Open the local URL printed by Vite. To run the production checks:
+## Android debug APK
+GitHub Actions is the recommended build path. Open Actions, choose a workflow, and download an APK artifact from a successful run for the intended branch/commit. Extract `app-debug.apk` and test on device. Debug APKs are not production-signed.
 
-```bash
-npm run typecheck
-npm run build
-```
+## Docs
+- [Current status and priorities](docs/PROJECT_STATUS.md)
+- [Game design](docs/GAME_DESIGN_DOCUMENT.md)
+- [Technical architecture](docs/TECHNICAL_ARCHITECTURE.md)
+- [Development roadmap](docs/DEVELOPMENT_ROADMAP.md)
+- [Character unlocks](docs/CHARACTER_UNLOCKS.md)
+- [AI development workflow](docs/AI_DEVELOPMENT_WORKFLOW.md)
+- [Quality/Play Store roadmap](docs/QUALITY_AND_PLAY_STORE_ROADMAP.md)
 
-## Current playable version — v0.2
+## Development and priorities
+Use feature branches and PRs. Run typecheck/build, test browser/Android as appropriate, and attach screenshots/video for visual/gameplay changes.
 
-The updated build is designed around a full-screen maze play view. Navigation to the level map is available from the game, and the pause overlay lets the player continue or return to the map.
+Priority order: (1) device QA and gameplay fixes, including current speed/control feel; (2) major world-background/platform/rock overhaul matching supplied rich reference images; (3) approved character art/animation polish; (4) validate 15×5 progression, challenges and economy; (5) automated tests, accessibility and save/profile QA; (6) release assets, privacy review, signing and staged testing.
 
-### Implemented in v0.2
-
-- A 15 × 23-cell long maze generated from a deterministic world/level seed.
-- Maze walls, dead ends and branching corridors, with a longer route than v0.1.
-- Traps, animated monsters, coins, gems, treasure chests, a golden key and a locked door in the relevant challenge levels.
-- Five rotating challenge categories across the 50-stage campaign: Classic, Monster, Obstacle, Key & Door and Tricky.
-- Ten themed worlds, each with five playable seeded levels.
-- World unlocking after all five levels in the previous world are completed; level-by-level progression and replay.
-- Three starting characters: Normal Girl, Normal Boy and Unicorn.
-- Six coin-unlockable characters with configurable prices.
-- Multiple local player profiles with separate coin balances, character ownership and level progress.
-- Cartoon avatar studio with emoji face, background colour and accessory choices.
-- Level completion rewards, stars, gems, trophies and a coin wallet.
-- Responsive pastel menus, level/world maps, pause/resume and touch D-pad controls.
-- Offline-first game assets and local save data; no photo upload, ads, real-money purchases or public chat.
-
-### Prototype limitations
-
-The v0.2 build is a much richer playable alpha, not the final art-polished release. Character/avatar art still uses emoji and simple vector-style game objects. Level layouts are generated procedurally from seeds, not individually hand-authored. The Tricky category currently focuses on key/door and hazard combinations; switches and elaborate hidden-path puzzles are not yet present. Character wardrobe, custom animation sets, music/sound settings, cloud backup, release signing and full physical-device QA remain future work.
-
-### Run locally
-
-Requirements: Node.js 22.12 or newer and npm.
-
-```bash
-npm install
-npm run dev
-```
-
-Open the local URL printed by Vite. To run the production checks:
-
-```bash
-npm run typecheck
-npm run build
-```
-
-## Android demo APK
-
-The Android wrapper uses Capacitor 8. The GitHub Actions workflow builds an installable **debug APK** whenever code is pushed to `main`, and can also be run manually from the Actions tab.
-
-1. Open the repository's **Actions** tab.
-2. Select **Android Debug APK** and open the latest successful run.
-3. Under **Artifacts**, download `magic-maze-adventure-debug-apk`.
-4. Extract the ZIP and copy `app-debug.apk` to the Android phone.
-5. Open the APK on the phone and allow installation from that source when Android asks. Only install builds you trust.
-
-This is a development/test build, not a Play Store release. It is unsigned with a production release key and has not completed full device QA.
-
-## Current status
-
-**v0.1 prototype:** one playable sample maze, three selectable starting characters and an Android debug build pipeline.
-
-**Still under development:** independent profiles, cartoon avatar creator, coin earning and character unlock transactions, all ten themed worlds, 50 levels, the remaining challenge mechanics, rewards, save/recovery and release hardening.
+Initial-release direction is offline-first and child-friendly—no ads, real-money purchases, public chat, photo uploads or unnecessary personal-data collection. Verify actual app/dependencies before release disclosures.
