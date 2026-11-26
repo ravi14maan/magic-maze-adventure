@@ -1397,8 +1397,8 @@ export class GameScene extends Phaser.Scene {
 
   private advanceAutoWalk(dt: number): void {
     if (!this.autoWalkEnabled || !this.player || this.challengeOpen || this.complete) return;
-    // A noticeably faster runner pace: nearly double the previous 150-unit speed.
-    const walkSpeed = 280;
+    // Restore the original runner pace of 150 units/sec, as requested by the playtester.
+    const walkSpeed = 150;
     const nextX = Math.min(FINISH_X + 30, this.player.x + walkSpeed * dt);
 
     // Keep moving past rocks and gaps. Jumping is entirely player-controlled;
