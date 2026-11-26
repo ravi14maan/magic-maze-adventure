@@ -134,7 +134,7 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, WORLD_LENGTH, height);
     // A little camera lag lets players see the hero advance across the screen.
     this.cameras.main.startFollow(this.player, true, 0.055, 0);
-    this.cameras.main.setFollowOffset(-width * 0.12, 0);
+    // Keep the hero left-of-center so the player can see obstacles approaching ahead.\n    this.cameras.main.setFollowOffset(-width * 0.24, 0);
     this.input.keyboard?.on("keydown", this.handleKey, this);
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
       this.swipeStartX = pointer.x;
@@ -183,7 +183,7 @@ export class GameScene extends Phaser.Scene {
       const coyoteWindow = this.time.now - this.lastGroundedAt < 260;
       if (!this.jumping && (nearGround || coyoteWindow)) {
         this.jumping = true;
-        this.jumpVelocity = -690;
+        this.jumpVelocity = -540;
         this.player.setAngle(-7);
         if (this.heroImage) {
           this.heroImage.setAngle(-8 * this.facing);
@@ -257,7 +257,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
     if (this.jumping || inGap) {
-      this.jumpVelocity += 840 * dt;
+      this.jumpVelocity += 900 * dt;
       this.player.y += this.jumpVelocity * dt;
       if (this.player.y >= this.groundY && !this.isOverGap(this.player.x)) {
         this.player.y = this.groundY;
@@ -1397,8 +1397,8 @@ export class GameScene extends Phaser.Scene {
 
   private advanceAutoWalk(dt: number): void {
     if (!this.autoWalkEnabled || !this.player || this.challengeOpen || this.complete) return;
-    // Restore the original runner pace of 150 units/sec, as requested by the playtester.
-    const walkSpeed = 150;
+    // Increase runner pace substantially above 280 based on playtester feedback.
+    const walkSpeed = 400;
     const nextX = Math.min(FINISH_X + 30, this.player.x + walkSpeed * dt);
 
     // Keep moving past rocks and gaps. Jumping is entirely player-controlled;
