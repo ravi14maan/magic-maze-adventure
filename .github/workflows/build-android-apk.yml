@@ -50,6 +50,11 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      - name: Cache Gradle dependencies
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+
       - name: Install Blender
         run: |
           sudo apt-get update
@@ -93,7 +98,13 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          # Retry transient Maven Central throttling (HTTP 429) with backoff.
+          for attempt in 1 2 3; do
+            ./gradlew assembleDebug --no-daemon && exit 0
+            echo "Gradle build attempt $attempt failed; waiting before retry..."
+            sleep $((attempt * 60))
+          done
+          exit 1
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
