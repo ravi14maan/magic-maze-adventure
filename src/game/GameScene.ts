@@ -21,9 +21,9 @@ interface Obstacle { x: number; kind: ObstacleKind; sprite: Phaser.GameObjects.G
 interface Pickup { x: number; y: number; kind: "coin" | "gem"; sprite: Phaser.GameObjects.Text; collected: boolean }
 interface Gap { left: number; right: number }
 
-const WORLD_LENGTH = 3100;
-const STATION_X = 1500;
-const FINISH_X = 2940;
+const WORLD_LENGTH = 6200;
+const STATION_X = 3100;
+const FINISH_X = 5900;
 const SUPPLIED_ART_BY_CHARACTER: Record<CharacterId, CharacterId> = {
   "normal-girl": "normal-girl",
   "normal-boy": "normal-boy",
@@ -373,12 +373,12 @@ export class GameScene extends Phaser.Scene {
         this.playerShadow.setAlpha(0.38);
       }
     }
-    if (this.player.x >= 820 && this.checkpointX < 820) {
-      this.checkpointX = 820;
+    if (this.player.x >= 1550 && this.checkpointX < 1550) {
+      this.checkpointX = 1550;
       this.publish("🏕️ Checkpoint saved! You can keep exploring.");
     }
-    if (this.player.x >= 2380 && this.checkpointX < 2380) {
-      this.checkpointX = 2380;
+    if (this.player.x >= 4550 && this.checkpointX < 4550) {
+      this.checkpointX = 4550;
       this.publish("🏕️ Another checkpoint saved!");
     }
     if (this.player.x >= FINISH_X) this.finishAdventure();
@@ -387,11 +387,13 @@ export class GameScene extends Phaser.Scene {
   private buildGapLayout(): Gap[] {
     const rank = difficultyForLevel(this.session.levelNumber, this.session.worldIndex).rank;
     if (rank === 0) return [];
-    if (rank === 1) return [{ left: 1100, right: 1190 }];
-    const width = Math.min(142, 90 + (rank - 2) * 6);
+    // A much longer runner route now has six challenge beats. Gaps are spaced
+    // so each has a safe approach and recovery stretch before the next section.
+    const width = Math.min(132, 96 + Math.max(0, rank - 1) * 5);
     return [
-      { left: 990, right: 990 + width },
-      { left: 2180, right: 2180 + width }
+      { left: 920, right: 920 + width },
+      { left: 2760, right: 2760 + width },
+      { left: 4820, right: 4820 + width }
     ];
   }
 
@@ -922,7 +924,9 @@ export class GameScene extends Phaser.Scene {
         ? ["log", "rock", "monster"]
         : ["log", "rock", "monster", "branch"];
     const obstacleDefs: Array<[number, ObstacleKind]> = [];
-    const obstacleCount = difficulty.hazardCount;
+    // Base hazards are spread over the full route, plus six memorable
+    // challenge sections with contrasting obstacle types and safe run-up space.
+    const obstacleCount = difficulty.hazardCount + 6;
     const routeStart = 290;
     const routeEnd = FINISH_X - 210;
     for (let i = 0; i < obstacleCount; i++) {
@@ -936,6 +940,21 @@ export class GameScene extends Phaser.Scene {
       }
       x = Phaser.Math.Clamp(x, routeStart, routeEnd);
       const kind = obstacleKinds[Math.floor(random() * obstacleKinds.length)]!;
+      obstacleDefs.push([x, kind]);
+    }
+    // Guarantee six distinct challenge beats along the longer path.
+    const challengeBeats: Array<[number, ObstacleKind]> = [
+      [1450, "log"],
+      [2250, "rock"],
+      [3450, "monster"],
+      [4150, "branch"],
+      [5250, "rock"],
+      [5550, "log"]
+    ];
+    for (const [x, kind] of challengeBeats) {
+      // Keep the fixed challenge hazards away from gap edges and the station.
+      if (Math.abs(x - STATION_X) < 210) continue;
+      if (this.gapZones.some(g => x > g.left - 150 && x < g.right + 150)) continue;
       obstacleDefs.push([x, kind]);
     }
     obstacleDefs.sort((a, b) => a[0] - b[0]);
@@ -1440,7 +1459,7 @@ export class GameScene extends Phaser.Scene {
 
   private advanceAutoWalk(dt: number): void {
     if (!this.autoWalkEnabled || !this.player || this.challengeOpen || this.complete) return;
-    const walkSpeed = 400;
+    const walkSpeed = 350;
     const nextX = Math.min(FINISH_X + 30, this.player.x + walkSpeed * dt);
 
     // Keep moving past rocks and gaps. Jumping is entirely player-controlled;
